@@ -43,3 +43,17 @@ canvas {
   color: blue;
   font-weight: bold;
 }
+
+:root {
+  --ion-background-color: #ffffff;
+  --ion-text-color: #000000;
+  --ion-card-header-bg: #f0f0f0;
+  --ion-card-background: #ffffff;
+}
+
+body.dark {
+  --ion-background-color: #121212;
+  --ion-text-color: #ffffff;
+  --ion-card-header-bg: #1e1e1e;
+  --ion-card-background: #1c1c1c;
+}
