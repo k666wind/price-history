@@ -68,13 +68,12 @@
 <script type="module" src="firebase.js"></script>
 <script type="module" src="app.js"></script>
 <script>
-  // PWA Service Worker
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 
-  // Fix: Searchbar event listener
-  document.getElementById("search").addEventListener('ionInput', () => {
-    window.searchProduct();
-  });
+// 修正 Search 即時更新
+document.getElementById("search").addEventListener('ionInput', () => {
+  window.searchProduct();
+});
 </script>
 
 </body>
