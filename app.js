@@ -31,7 +31,6 @@ window.addRecord = async () => {
     storeOriginal: store
   });
 
-  // Auto Compare
   const snapshot = await getDocs(collection(db, "records"));
   const records = [];
   snapshot.forEach(doc => records.push(doc.data()));
@@ -75,7 +74,6 @@ function renderDashboard(filteredRecords) {
     const latest = recs[0];
     const lowest = recs.reduce((m,r)=> r.price<m.price?r:m, recs[0]);
 
-    // Store Stats
     const storeStats = {};
     recs.forEach(r=>{
       if (!storeStats[r.store] || r.price < storeStats[r.store]) storeStats[r.store] = r.price;
@@ -104,7 +102,6 @@ function renderDashboard(filteredRecords) {
     `;
     dashboardDiv.appendChild(card);
 
-    // Chart Colors
     const colors = getChartColors();
 
     // Line Chart
@@ -139,14 +136,11 @@ function renderDashboard(filteredRecords) {
 }
 
 // --------------------
-// Search Product (case-insensitive)
+// Search Product (case-insensitive, default All Stores)
 // --------------------
 window.searchProduct = async function() {
   const keyword = document.getElementById("search").value.trim().toLowerCase();
-  let storeFilter = document.getElementById("filterStore").value;
-
-  // 如果 storeFilter 是空字串或 null，表示選 All Stores
-  if (!storeFilter) storeFilter = "";
+  let storeFilter = filterStoreEl.value || ""; // default All Stores
 
   const snapshot = await getDocs(collection(db, "records"));
   const records = [];
@@ -158,17 +152,18 @@ window.searchProduct = async function() {
   );
 
   // Fill store select options dynamically
-  const storeSet = new Set(records.map(r => r.store));
+  const storeSet = new Set(records.map(r=>r.store));
   filterStoreEl.innerHTML = '<ion-select-option value="">All Stores</ion-select-option>';
   storeSet.forEach(s => filterStoreEl.innerHTML += `<ion-select-option value="${s}">${s}</ion-select-option>`);
 
-  // Set default to "All Stores" if nothing selected
+  // Set default to All Stores if nothing selected
   if (!filterStoreEl.value) filterStoreEl.value = "";
 
   renderDashboard(filtered);
 };
+
 // --------------------
-// CSV Export
+// Export CSV
 // --------------------
 window.exportCSV = async () => {
   const snapshot = await getDocs(collection(db, "records"));
@@ -189,7 +184,7 @@ window.exportCSV = async () => {
 };
 
 // --------------------
-// CSV Import
+// Import CSV
 // --------------------
 importCSVEl.addEventListener('change', async (e)=>{
   const file = e.target.files[0];
@@ -211,3 +206,8 @@ importCSVEl.addEventListener('change', async (e)=>{
   }
   window.searchProduct();
 });
+
+// --------------------
+// Initial load: show all products & All Stores
+// --------------------
+window.addEventListener('DOMContentLoaded', window.searchProduct);
