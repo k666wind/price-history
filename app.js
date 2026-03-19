@@ -1,89 +1,107 @@
 import { db } from './firebase.js';
 import { collection, addDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-let chartInstance = null;
 const productEl = document.getElementById("product");
 const priceEl = document.getElementById("price");
 const storeEl = document.getElementById("store");
-const dashboard = document.getElementById("dashboard");
-const chartCanvas = document.getElementById("chart");
 const resultDiv = document.getElementById("result");
+const dashboardDiv = document.getElementById("dashboard");
 
-// ➕ Add record + Auto Price Compare
+let charts = {}; // 儲存每個 product chart instance
+
+// ➕ Add Record + Auto Price Compare
 window.addRecord = async () => {
   const product = productEl.value.toLowerCase();
   const price = parseFloat(priceEl.value);
   const store = storeEl.value;
+
+  if (!product || !price || !store) return alert("Please fill all fields");
 
   await addDoc(collection(db, "records"), {
     product, price, store,
     date: new Date().toISOString()
   });
 
-  // Auto compare
+  // Auto Compare
   const q = query(collection(db, "records"), where("product", "==", product));
   const snapshot = await getDocs(q);
   const records = [];
   snapshot.forEach(doc => records.push(doc.data()));
 
   const lowest = records.reduce((m,r)=> r.price<m.price?r:m, records[0]);
-  if (price <= lowest.price) {
-    alert(`🔥 New lowest price for ${product}: £${price} at ${store}`);
-  }
+  if (price <= lowest.price) alert(`🔥 New lowest price for ${product}: £${price} @ ${store}`);
 
-  alert("Saved");
+  productEl.value = "";
+  priceEl.value = "";
+  storeEl.value = "";
+
+  searchProduct(); // 更新 dashboard
 };
 
-// 🔍 Search + Table + Dashboard
+// 🔍 Search + Dashboard
 window.searchProduct = async () => {
   const keyword = document.getElementById("search").value.toLowerCase();
-
-  const q = query(collection(db, "records"), where("product", "==", keyword));
+  const q = keyword 
+    ? query(collection(db, "records"), where("product", "==", keyword))
+    : query(collection(db, "records"));
+    
   const snapshot = await getDocs(q);
   const records = [];
   snapshot.forEach(doc => records.push(doc.data()));
 
-  if (!records.length) {
-    resultDiv.innerHTML = "No data";
-    dashboard.innerHTML = "";
-    return;
+  dashboardDiv.innerHTML = "";
+  resultDiv.innerHTML = "";
+
+  if (!records.length) return;
+
+  // group by product
+  const productMap = {};
+  records.forEach(r=>{
+    if (!productMap[r.product]) productMap[r.product] = [];
+    productMap[r.product].push(r);
+  });
+
+  for (let prod in productMap) {
+    const recs = productMap[prod];
+    recs.sort((a,b)=> new Date(b.date) - new Date(a.date));
+
+    const latest = recs[0];
+    const lowest = recs.reduce((m,r)=> r.price<m.price?r:m, recs[0]);
+
+    // store stats
+    const storeStats = {};
+    recs.forEach(r=>{
+      if (!storeStats[r.store] || r.price < storeStats[r.store]) storeStats[r.store] = r.price;
+    });
+
+    // create card
+    const card = document.createElement("ion-card");
+    let inner = `
+      <ion-card-header><ion-card-title>${prod}</ion-card-title></ion-card-header>
+      <ion-card-content>
+        <p>Latest: £${latest.price} @ ${latest.store} (${latest.date.split("T")[0]})</p>
+        <p>Lowest: £${lowest.price} @ ${lowest.store} (${lowest.date.split("T")[0]})</p>
+        <h6>Store Stats:</h6>
+    `;
+    for (let s in storeStats) inner += `<p>${s}: £${storeStats[s]}</p>`;
+    inner += `<canvas id="chart-${prod}"></canvas></ion-card-content>`;
+    card.innerHTML = inner;
+    dashboardDiv.appendChild(card);
+
+    // Chart
+    const ctx = document.getElementById(`chart-${prod}`).getContext('2d');
+    if (charts[prod]) charts[prod].destroy();
+    charts[prod] = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: recs.map(r=>r.date.split("T")[0]),
+        datasets: [{
+          label: 'Price',
+          data: recs.map(r=>r.price),
+          borderColor: 'blue',
+          backgroundColor: 'rgba(0,0,255,0.2)'
+        }]
+      }
+    });
   }
-
-  // sort 最新 → 最舊
-  records.sort((a,b)=> new Date(b.date) - new Date(a.date));
-
-  // Table
-  let html = `<table class="striped">
-      <thead><tr><th>Product</th><th>Price</th><th>Store</th><th>Date</th></tr></thead><tbody>`;
-  records.forEach(r=>{
-    html += `<tr><td>${r.product}</td><td>£${r.price}</td><td>${r.store}</td><td>${r.date.split("T")[0]}</td></tr>`;
-  });
-  html += "</tbody></table>";
-  resultDiv.innerHTML = html;
-
-  // Dashboard
-  const latest = records[0];
-  const lowest = records.reduce((m,r)=> r.price<m.price?r:m, records[0]);
-
-  const storeStats = {};
-  records.forEach(r=>{
-    if (!storeStats[r.store] || r.price < storeStats[r.store]) storeStats[r.store] = r.price;
-  });
-
-  let dashHtml = `<h5>📊 Dashboard</h5>
-    <p>Latest: £${latest.price} at ${latest.store} (${latest.date.split("T")[0]})</p>
-    <p>Lowest: £${lowest.price} at ${lowest.store} (${lowest.date.split("T")[0]})</p>
-    <h6>Store Stats:</h6>`;
-  for (let s in storeStats) dashHtml += `<p>${s}: £${storeStats[s]}</p>`;
-  dashboard.innerHTML = dashHtml;
-
-  // Chart
-  if (chartInstance) chartInstance.destroy();
-  chartInstance = new Chart(chartCanvas, {
-    type: 'line',
-    data: {
-      labels: records.map(r=>r.date.split("T")[0]),
-      datasets: [{ label: 'Price', data: records.map(r=>r.price) }]
-    }
-  });
 };
