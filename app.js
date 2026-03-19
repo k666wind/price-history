@@ -1,3 +1,54 @@
+import { db } from './firebase.js';
+import { collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+const productEl = document.getElementById("product");
+const priceEl = document.getElementById("price");
+const storeEl = document.getElementById("store");
+const dashboardDiv = document.getElementById("dashboard");
+const filterStoreEl = document.getElementById("filterStore");
+const importCSVEl = document.getElementById("importCSV");
+
+let charts = {};
+
+// --------------------
+// Add Product
+// --------------------
+window.addRecord = async () => {
+  const product = productEl.value.trim();
+  const store = storeEl.value.trim();
+  const price = parseFloat(priceEl.value);
+  if (!product || !store || !price) return alert("Please fill all fields");
+
+  const productLower = product.toLowerCase();
+  const storeLower = store.toLowerCase();
+
+  await addDoc(collection(db, "records"), {
+    product: productLower,
+    store: storeLower,
+    price,
+    date: new Date().toISOString(),
+    productOriginal: product,
+    storeOriginal: store
+  });
+
+  // Auto Compare
+  const snapshot = await getDocs(collection(db, "records"));
+  const records = [];
+  snapshot.forEach(doc => records.push(doc.data()));
+  const related = records.filter(r => r.product === productLower);
+  const lowest = related.reduce((m,r)=> r.price<m.price?r:m, related[0]);
+  if (price <= lowest.price) alert(`🔥 New lowest price for ${product}: £${price} @ ${store}`);
+
+  productEl.value = "";
+  priceEl.value = "";
+  storeEl.value = "";
+
+  window.searchProduct(); // update dashboard
+};
+
+// --------------------
+// Dark/Light Mode Colors for Charts
+// --------------------
 function getChartColors() {
   const isDark = document.body.classList.contains('dark');
   return {
@@ -8,8 +59,10 @@ function getChartColors() {
   };
 }
 
-// 初始化/更新 Dashboard
-async function renderDashboard(filteredRecords) {
+// --------------------
+// Render Dashboard
+// --------------------
+function renderDashboard(filteredRecords) {
   dashboardDiv.innerHTML = "";
   const productMap = {};
   filteredRecords.forEach(r => {
@@ -85,8 +138,71 @@ async function renderDashboard(filteredRecords) {
   }
 }
 
-// Dark/Light Mode 切換時自動刷新 Charts
-window.toggleDarkMode = () => {
-  document.body.classList.toggle('dark');
-  searchProduct(); // 重新渲染 Dashboard 以更新 Chart 顏色
+// --------------------
+// Search Product (case-insensitive)
+// --------------------
+window.searchProduct = async function() {
+  const keyword = document.getElementById("search").value.trim().toLowerCase();
+  const storeFilter = document.getElementById("filterStore").value;
+
+  const snapshot = await getDocs(collection(db, "records"));
+  const records = [];
+  snapshot.forEach(doc => records.push(doc.data()));
+
+  let filtered = records.filter(r =>
+    (!keyword || r.product.includes(keyword)) &&
+    (!storeFilter || r.store === storeFilter)
+  );
+
+  // Fill store select options dynamically
+  const storeSet = new Set(records.map(r=>r.store));
+  filterStoreEl.innerHTML = '<ion-select-option value="">All Stores</ion-select-option>';
+  storeSet.forEach(s => filterStoreEl.innerHTML += `<ion-select-option value="${s}">${s}</ion-select-option>`);
+
+  renderDashboard(filtered);
 };
+
+// --------------------
+// CSV Export
+// --------------------
+window.exportCSV = async () => {
+  const snapshot = await getDocs(collection(db, "records"));
+  const rows = [];
+  snapshot.forEach(doc=>rows.push(doc.data()));
+  if (!rows.length) return alert("No data");
+
+  let csv = "product,store,price,date\n";
+  rows.forEach(r=>csv += `${r.productOriginal},${r.storeOriginal},${r.price},${r.date}\n`);
+
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "shopping.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+// --------------------
+// CSV Import
+// --------------------
+importCSVEl.addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const text = await file.text();
+  const lines = text.split("\n").slice(1);
+  for(let line of lines){
+    if(!line.trim()) continue;
+    const [product, store, price, date] = line.split(",");
+    if(!product || !store || !price) continue;
+    await addDoc(collection(db,"records"),{
+      product: product.toLowerCase().trim(),
+      store: store.toLowerCase().trim(),
+      price: parseFloat(price),
+      date: date || new Date().toISOString(),
+      productOriginal: product,
+      storeOriginal: store
+    });
+  }
+  window.searchProduct();
+});
