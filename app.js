@@ -61,10 +61,10 @@ function getChartColors() {
 // --------------------
 // Render Dashboard
 // --------------------
-function renderDashboard(filteredRecords) {
+function renderDashboard(records) {
   dashboardDiv.innerHTML = "";
   const productMap = {};
-  filteredRecords.forEach(r => {
+  records.forEach(r => {
     if (!productMap[r.product]) productMap[r.product] = [];
     productMap[r.product].push(r);
   });
@@ -209,6 +209,6 @@ importCSVEl.addEventListener('change', async (e)=>{
 // --------------------
 // 初始載入: 顯示全部產品 + Store Filter 為 All Stores
 // --------------------
-window.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => {
   window.searchProduct();
 });
