@@ -1,43 +1,73 @@
-import { db } from './firebase.js';
+import { db, auth } from './firebase.js';
 import {
   collection, addDoc, query, where, getDocs
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-window.addRecord = async function () {
+import {
+  GoogleAuthProvider, signInWithPopup
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+let currentUser = null;
+let chartInstance = null;
+
+// 👤 LOGIN
+window.login = async () => {
+  const provider = new GoogleAuthProvider();
+  const result = await signInWithPopup(auth, provider);
+  currentUser = result.user;
+  alert("Logged in: " + currentUser.email);
+};
+
+// ➕ ADD
+window.addRecord = async () => {
+  if (!currentUser) return alert("Login first");
+
   const product = productEl.value.toLowerCase();
   const price = parseFloat(priceEl.value);
   const store = storeEl.value;
 
   await addDoc(collection(db, "records"), {
-    product, price, store, date: new Date().toISOString()
+    product, price, store,
+    userId: currentUser.uid,
+    date: new Date().toISOString()
   });
 
   alert("Saved");
-}
+};
 
-const productEl = document.getElementById("product");
-const priceEl = document.getElementById("price");
-const storeEl = document.getElementById("store");
-
+// 🔍 SEARCH（FIXED + TABLE）
 window.searchProduct = async function () {
-  const keyword = document.getElementById("search").value.toLowerCase();
+  if (!currentUser) return;
 
-  const q = query(collection(db, "records"), where("product", "==", keyword));
+  const keyword = document.getElementById("search").value.toLowerCase();
+  const resultDiv = document.getElementById("result");
+
+  resultDiv.innerHTML = "Loading...";
+
+  const q = query(
+    collection(db, "records"),
+    where("product", "==", keyword),
+    where("userId", "==", currentUser.uid)
+  );
+
   const snapshot = await getDocs(q);
 
   let records = [];
   snapshot.forEach(doc => records.push(doc.data()));
 
-  if (!records.length) return;
+  if (!records.length) {
+    resultDiv.innerHTML = "No data";
+    return;
+  }
 
-  records.sort((a,b)=> new Date(b.date)-new Date(a.date));
+  // 排序
+  records.sort((a,b)=> new Date(b.date) - new Date(a.date));
 
-  const latest = records[0];
-  const cheapest = records.reduce((m,r)=> r.price<m.price?r:m, records[0]);
+  // destroy chart
+  if (chartInstance) chartInstance.destroy();
 
-  // 📊 chart
   const ctx = document.getElementById("chart");
-  new Chart(ctx, {
+  chartInstance = new Chart(ctx, {
     type: 'line',
     data: {
       labels: records.map(r=>r.date.split("T")[0]),
@@ -45,29 +75,62 @@ window.searchProduct = async function () {
     }
   });
 
-  // 🏪 store stats
-  const stats = {};
-  records.forEach(r=>{
-    if (!stats[r.store] || r.price < stats[r.store]) {
-      stats[r.store] = r.price;
-    }
-  });
-
+  // table
   let html = `
-    <p>Latest: £${latest.price} (${latest.store})</p>
-    <p>Cheapest: £${cheapest.price} (${cheapest.store})</p>
-    <h6>Store Stats</h6>
+    <table class="striped">
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>Price</th>
+          <th>Store</th>
+          <th>Date</th>
+        </tr>
+      </thead><tbody>
   `;
 
-  for (let s in stats) {
-    html += `<p>${s}: £${stats[s]}</p>`;
-  }
+  records.forEach(r=>{
+    html += `
+      <tr>
+        <td>${r.product}</td>
+        <td>£${r.price}</td>
+        <td>${r.store}</td>
+        <td>${r.date.split("T")[0]}</td>
+      </tr>
+    `;
+  });
 
-  document.getElementById("result").innerHTML = html;
+  html += "</tbody></table>";
 
-  // 🔔 alert check
-  const threshold = 1.0;
-  if (cheapest.price < threshold) {
-    alert("🔥 Price dropped!");
+  resultDiv.innerHTML = html;
+
+  // 🔔 alert
+  const cheapest = records.reduce((m,r)=> r.price<m.price?r:m, records[0]);
+  if (cheapest.price < 1) {
+    new Notification("🔥 Price Drop", {
+      body: `${keyword} now £${cheapest.price}`
+    });
   }
+};
+
+// 📦 BARCODE + lookup
+async function lookupProduct(code) {
+  const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${code}.json`);
+  const data = await res.json();
+  return data.product?.product_name || code;
 }
+
+const scanner = new Html5Qrcode("reader");
+
+scanner.start(
+  { facingMode: "environment" },
+  {},
+  async (code) => {
+    const name = await lookupProduct(code);
+    document.getElementById("product").value = name;
+  }
+);
+
+// refs
+const productEl = document.getElementById("product");
+const priceEl = document.getElementById("price");
+const storeEl = document.getElementById("store");
