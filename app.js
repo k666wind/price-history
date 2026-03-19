@@ -143,7 +143,10 @@ function renderDashboard(filteredRecords) {
 // --------------------
 window.searchProduct = async function() {
   const keyword = document.getElementById("search").value.trim().toLowerCase();
-  const storeFilter = document.getElementById("filterStore").value;
+  let storeFilter = document.getElementById("filterStore").value;
+
+  // 如果 storeFilter 是空字串或 null，表示選 All Stores
+  if (!storeFilter) storeFilter = "";
 
   const snapshot = await getDocs(collection(db, "records"));
   const records = [];
@@ -155,13 +158,15 @@ window.searchProduct = async function() {
   );
 
   // Fill store select options dynamically
-  const storeSet = new Set(records.map(r=>r.store));
+  const storeSet = new Set(records.map(r => r.store));
   filterStoreEl.innerHTML = '<ion-select-option value="">All Stores</ion-select-option>';
   storeSet.forEach(s => filterStoreEl.innerHTML += `<ion-select-option value="${s}">${s}</ion-select-option>`);
 
+  // Set default to "All Stores" if nothing selected
+  if (!filterStoreEl.value) filterStoreEl.value = "";
+
   renderDashboard(filtered);
 };
-
 // --------------------
 // CSV Export
 // --------------------
