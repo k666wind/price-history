@@ -3,7 +3,7 @@
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Material UI -->
+  <!-- Material -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
 
   <link rel="manifest" href="manifest.json">
@@ -16,12 +16,14 @@
 
 <h4>🛒 Shopping Tracker</h4>
 
+<button class="btn blue" onclick="login()">Login</button>
+
 <div class="card">
   <div class="card-content">
     <input id="product" placeholder="Product">
     <input id="price" type="number" placeholder="Price">
     <input id="store" placeholder="Store">
-    <button class="btn" onclick="addRecord()">Add</button>
+    <button class="btn green" onclick="addRecord()">Add</button>
   </div>
 </div>
 
@@ -34,8 +36,10 @@
 
 <canvas id="chart"></canvas>
 
+<h5>📦 Scan Barcode</h5>
 <div id="reader"></div>
 
+<!-- libs -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://unpkg.com/html5-qrcode"></script>
 
