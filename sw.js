@@ -1,17 +1,18 @@
 const CACHE_NAME = 'shopping-pwa-v1';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/style.css',
-  '/app.js',
-  '/firebase.js',
-  '/manifest.json'
+  './',            // index.html
+  './index.html',
+  './style.css',
+  './app.js',
+  './firebase.js',
+  './manifest.json'
 ];
 
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(urlsToCache.map(url => new Request(url, {cache: 'reload'}))))
+      .catch(err => console.error('Cache addAll failed:', err))
   );
 });
 
@@ -19,6 +20,6 @@ self.addEventListener('fetch', event => {
   event.respondWith(
     caches.match(event.request)
       .then(response => response || fetch(event.request))
-      .catch(()=> fetch(event.request)) // fallback
+      .catch(() => fetch(event.request))
   );
 });
