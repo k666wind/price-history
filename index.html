@@ -12,10 +12,7 @@
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  <!-- Custom CSS -->
   <link rel="stylesheet" href="style.css">
-
-  <!-- PWA -->
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
@@ -57,7 +54,7 @@
         <ion-card-title>Search Product</ion-card-title>
       </ion-card-header>
       <ion-card-content>
-        <ion-searchbar id="search" onionInput="searchProduct()"></ion-searchbar>
+        <ion-searchbar id="search"></ion-searchbar>
         <div id="result"></div>
       </ion-card-content>
     </ion-card>
@@ -71,7 +68,13 @@
 <script type="module" src="firebase.js"></script>
 <script type="module" src="app.js"></script>
 <script>
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+  // PWA Service Worker
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+
+  // Fix: Searchbar event listener
+  document.getElementById("search").addEventListener('ionInput', () => {
+    window.searchProduct();
+  });
 </script>
 
 </body>
