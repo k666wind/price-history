@@ -3,20 +3,15 @@
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Material -->
+  <!-- Materialize CSS -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
-
-  <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css">
-
+  <link rel="manifest" href="manifest.json">
   <title>Shopping Tracker</title>
 </head>
-
 <body class="container">
 
 <h4>🛒 Shopping Tracker</h4>
-
-<button class="btn blue" onclick="login()">Login</button>
 
 <div class="card">
   <div class="card-content">
@@ -36,13 +31,9 @@
 
 <canvas id="chart"></canvas>
 
-<h5>📦 Scan Barcode</h5>
-<div id="reader"></div>
+<div id="dashboard" class="card"></div>
 
-<!-- libs -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://unpkg.com/html5-qrcode"></script>
-
 <script type="module" src="firebase.js"></script>
 <script type="module" src="app.js"></script>
 
