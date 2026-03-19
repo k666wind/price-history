@@ -1,19 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Shopping Tracker</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shopping Tracker</title>
 
-  <!-- Ionic CSS & JS -->
-  <link href="https://cdn.jsdelivr.net/npm/@ionic/core/css/ionic.bundle.css" rel="stylesheet">
-  <script type="module" src="https://cdn.jsdelivr.net/npm/@ionic/core/dist/ionic/ionic.esm.js"></script>
+<!-- Ionic CSS & JS -->
+<link href="https://cdn.jsdelivr.net/npm/@ionic/core/css/ionic.bundle.css" rel="stylesheet">
+<script type="module" src="https://cdn.jsdelivr.net/npm/@ionic/core/dist/ionic/ionic.esm.js"></script>
 
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  <link rel="stylesheet" href="style.css">
-  <link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
 </head>
 <body>
 
@@ -26,7 +26,7 @@
 
   <ion-content class="ion-padding">
 
-    <!-- Add Record -->
+    <!-- Add Product -->
     <ion-card>
       <ion-card-header>
         <ion-card-title>Add Product</ion-card-title>
@@ -55,12 +55,29 @@
       </ion-card-header>
       <ion-card-content>
         <ion-searchbar id="search"></ion-searchbar>
+        <ion-item>
+          <ion-label>Filter by store</ion-label>
+          <ion-select id="filterStore">
+            <ion-select-option value="">All Stores</ion-select-option>
+          </ion-select>
+        </ion-item>
         <div id="result"></div>
       </ion-card-content>
     </ion-card>
 
     <!-- Dashboard -->
     <div id="dashboard"></div>
+
+    <!-- Import / Export -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Import / Export CSV</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <input type="file" id="importCSV" accept=".csv">
+        <ion-button expand="full" color="tertiary" onclick="exportCSV()">Export CSV</ion-button>
+      </ion-card-content>
+    </ion-card>
 
   </ion-content>
 </ion-app>
@@ -70,10 +87,9 @@
 <script>
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 
-// 修正 Search 即時更新
-document.getElementById("search").addEventListener('ionInput', () => {
-  window.searchProduct();
-});
+// Search + filter triggers
+document.getElementById("search").addEventListener('ionInput', () => window.searchProduct());
+document.getElementById("filterStore").addEventListener('ionChange', () => window.searchProduct());
 </script>
 
 </body>
