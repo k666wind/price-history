@@ -31,22 +31,15 @@ window.addRecord = async () => {
     storeOriginal: store
   });
 
-  const snapshot = await getDocs(collection(db, "records"));
-  const records = [];
-  snapshot.forEach(doc => records.push(doc.data()));
-  const related = records.filter(r => r.product === productLower);
-  const lowest = related.reduce((m,r)=> r.price<m.price?r:m, related[0]);
-  if (price <= lowest.price) alert(`🔥 New lowest price for ${product}: £${price} @ ${store}`);
-
   productEl.value = "";
   priceEl.value = "";
   storeEl.value = "";
 
-  window.searchProduct(); // update dashboard
+  window.searchProduct();
 };
 
 // --------------------
-// Dark/Light Mode Colors for Charts
+// Chart Colors
 // --------------------
 function getChartColors() {
   const isDark = document.body.classList.contains('dark');
@@ -136,7 +129,7 @@ function renderDashboard(records) {
 }
 
 // --------------------
-// Search Product (case-insensitive, default All Stores)
+// Search Product (case-insensitive)
 // --------------------
 window.searchProduct = async function() {
   const keyword = document.getElementById("search").value.trim().toLowerCase();
@@ -145,13 +138,15 @@ window.searchProduct = async function() {
   const records = [];
   snapshot.forEach(doc => records.push(doc.data()));
 
-  // 填充 store select 選項
-  const storeSet = new Set(records.map(r => r.store));
+  // Fill store select options
+  const storeSet = new Set(records.map(r=>r.store));
   filterStoreEl.innerHTML = '<ion-select-option value="">All Stores</ion-select-option>';
-  storeSet.forEach(s => filterStoreEl.innerHTML += `<ion-select-option value="${s}">${s}</ion-select-option>`);
+  storeSet.forEach(s=>{
+    filterStoreEl.innerHTML += `<ion-select-option value="${s}">${s}</ion-select-option>`;
+  });
 
-  // Store filter 預設為 All Stores
-  const storeFilter = filterStoreEl.value || "";
+  // Default store filter = All Stores
+  const storeFilter = filterStoreEl.value ?? "";
 
   let filtered = records.filter(r =>
     (!keyword || r.product.includes(keyword)) &&
@@ -207,8 +202,28 @@ importCSVEl.addEventListener('change', async (e)=>{
 });
 
 // --------------------
-// 初始載入: 顯示全部產品 + Store Filter 為 All Stores
+// ⚡ Reliable Initialization (Ionic-friendly)
 // --------------------
-document.addEventListener('DOMContentLoaded', () => {
-  window.searchProduct();
-});
+async function initializeDashboard() {
+  const snapshot = await getDocs(collection(db, "records"));
+  const records = [];
+  snapshot.forEach(doc => records.push(doc.data()));
+
+  // Fill store options first
+  const storeSet = new Set(records.map(r=>r.store));
+  filterStoreEl.innerHTML = '<ion-select-option value="">All Stores</ion-select-option>';
+  storeSet.forEach(s=>{
+    filterStoreEl.innerHTML += `<ion-select-option value="${s}">${s}</ion-select-option>`;
+  });
+
+  // Wait a short moment to let Ionic render the select
+  setTimeout(()=>{
+    filterStoreEl.value = "";  // All Stores
+    renderDashboard(records);   // show all products
+  }, 50);
+}
+
+// --------------------
+// DOM Loaded
+// --------------------
+document.addEventListener('DOMContentLoaded', initializeDashboard);
