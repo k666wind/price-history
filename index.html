@@ -22,18 +22,13 @@
     <ion-toolbar color="primary">
       <ion-title>🛒 Shopping Tracker</ion-title>
     </ion-toolbar>
-    <ion-button expand="block" onclick="toggleDarkMode()">Toggle Dark / Light Mode</ion-button>
-
-<script>
-window.toggleDarkMode = () => {
-  document.body.classList.toggle('dark');
-}
-</script>
   </ion-header>
 
   <ion-content class="ion-padding">
 
-    
+    <!-- Dark Mode Toggle -->
+    <ion-button expand="block" onclick="toggleDarkMode()">Toggle Dark / Light Mode</ion-button>
+
     <!-- Add Product -->
     <ion-card>
       <ion-card-header>
@@ -69,7 +64,6 @@ window.toggleDarkMode = () => {
             <ion-select-option value="">All Stores</ion-select-option>
           </ion-select>
         </ion-item>
-        <div id="result"></div>
       </ion-card-content>
     </ion-card>
 
@@ -94,10 +88,12 @@ window.toggleDarkMode = () => {
 <script type="module" src="app.js"></script>
 <script>
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
-
-// Search + filter triggers
 document.getElementById("search").addEventListener('ionInput', () => window.searchProduct());
 document.getElementById("filterStore").addEventListener('ionChange', () => window.searchProduct());
+
+window.toggleDarkMode = () => {
+  document.body.classList.toggle('dark');
+}
 </script>
 
 </body>
