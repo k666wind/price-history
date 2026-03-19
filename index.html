@@ -2,156 +2,50 @@
 <html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Material UI -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+
   <title>Shopping Tracker</title>
-
-  <style>
-    body {
-      font-family: Arial;
-      margin: 0;
-      padding: 16px;
-      background: #f5f5f5;
-    }
-
-    h2 { margin-top: 0; }
-
-    .card {
-      background: white;
-      padding: 12px;
-      border-radius: 12px;
-      margin-bottom: 12px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    }
-
-    input, button {
-      width: 100%;
-      padding: 10px;
-      margin-top: 6px;
-      border-radius: 8px;
-      border: 1px solid #ddd;
-    }
-
-    button {
-      background: black;
-      color: white;
-      border: none;
-    }
-
-    .item {
-      padding: 8px;
-      border-bottom: 1px solid #eee;
-    }
-
-    .cheap { color: green; }
-  </style>
 </head>
 
-<body>
+<body class="container">
 
-<h2>🛒 Shopping Tracker</h2>
+<h4>🛒 Shopping Tracker</h4>
 
 <div class="card">
-  <h3>Add Record</h3>
-  <input id="product" placeholder="Product">
-  <input id="price" type="number" placeholder="Price">
-  <input id="store" placeholder="Store">
-  <button onclick="add()">Add</button>
+  <div class="card-content">
+    <input id="product" placeholder="Product">
+    <input id="price" type="number" placeholder="Price">
+    <input id="store" placeholder="Store">
+    <button class="btn" onclick="addRecord()">Add</button>
+  </div>
 </div>
 
 <div class="card">
-  <h3>Search</h3>
-  <input id="search" placeholder="Type product..." oninput="liveSearch()">
-  <div id="results"></div>
+  <div class="card-content">
+    <input id="search" placeholder="Search..." oninput="searchProduct()">
+    <div id="result"></div>
+  </div>
 </div>
 
-<script type="module">
-  // 🔥 Firebase import
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import {
-    getFirestore, collection, addDoc, query, where, getDocs
-  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+<canvas id="chart"></canvas>
 
-  // ⚠️ 你之後要換成你自己 Firebase config
-  const firebaseConfig = {
-    apiKey: "YOUR_KEY",
-    authDomain: "YOUR_DOMAIN",
-    projectId: "YOUR_ID"
-  };
+<div id="reader"></div>
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://unpkg.com/html5-qrcode"></script>
 
-  async function add() {
-    const product = document.getElementById("product").value.toLowerCase();
-    const price = parseFloat(document.getElementById("price").value);
-    const store = document.getElementById("store").value;
+<script type="module" src="firebase.js"></script>
+<script type="module" src="app.js"></script>
 
-    if (!product || !price || !store) {
-      alert("Fill all");
-      return;
-    }
-
-    await addDoc(collection(db, "records"), {
-      product,
-      price,
-      store,
-      date: new Date().toISOString()
-    });
-
-    alert("Saved");
-  }
-
-  async function liveSearch() {
-    const keyword = document.getElementById("search").value.toLowerCase();
-    const resultsDiv = document.getElementById("results");
-
-    if (!keyword) {
-      resultsDiv.innerHTML = "";
-      return;
-    }
-
-    const q = query(
-      collection(db, "records"),
-      where("product", "==", keyword)
-    );
-
-    const snapshot = await getDocs(q);
-
-    let records = [];
-    snapshot.forEach(doc => records.push(doc.data()));
-
-    if (records.length === 0) {
-      resultsDiv.innerHTML = "No data";
-      return;
-    }
-
-    // sort by date
-    records.sort((a,b) => new Date(b.date) - new Date(a.date));
-
-    const latest = records[0];
-    const cheapest = records.reduce((m, r) => r.price < m.price ? r : m, records[0]);
-
-    let html = `
-      <div class="item">
-        <b>Latest:</b> £${latest.price} (${latest.store})
-      </div>
-      <div class="item cheap">
-        <b>Cheapest:</b> £${cheapest.price} (${cheapest.store})
-      </div>
-      <hr>
-    `;
-
-    // history list
-    records.forEach(r => {
-      html += `
-        <div class="item">
-          £${r.price} - ${r.store}<br>
-          <small>${r.date.split("T")[0]}</small>
-        </div>
-      `;
-    });
-
-    resultsDiv.innerHTML = html;
-  }
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js');
+}
 </script>
 
 </body>
