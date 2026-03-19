@@ -140,24 +140,23 @@ function renderDashboard(filteredRecords) {
 // --------------------
 window.searchProduct = async function() {
   const keyword = document.getElementById("search").value.trim().toLowerCase();
-  let storeFilter = filterStoreEl.value || ""; // default All Stores
 
   const snapshot = await getDocs(collection(db, "records"));
   const records = [];
   snapshot.forEach(doc => records.push(doc.data()));
 
+  // 填充 store select 選項
+  const storeSet = new Set(records.map(r => r.store));
+  filterStoreEl.innerHTML = '<ion-select-option value="">All Stores</ion-select-option>';
+  storeSet.forEach(s => filterStoreEl.innerHTML += `<ion-select-option value="${s}">${s}</ion-select-option>`);
+
+  // Store filter 預設為 All Stores
+  const storeFilter = filterStoreEl.value || "";
+
   let filtered = records.filter(r =>
     (!keyword || r.product.includes(keyword)) &&
     (!storeFilter || r.store === storeFilter)
   );
-
-  // Fill store select options dynamically
-  const storeSet = new Set(records.map(r=>r.store));
-  filterStoreEl.innerHTML = '<ion-select-option value="">All Stores</ion-select-option>';
-  storeSet.forEach(s => filterStoreEl.innerHTML += `<ion-select-option value="${s}">${s}</ion-select-option>`);
-
-  // Set default to All Stores if nothing selected
-  if (!filterStoreEl.value) filterStoreEl.value = "";
 
   renderDashboard(filtered);
 };
@@ -208,6 +207,8 @@ importCSVEl.addEventListener('change', async (e)=>{
 });
 
 // --------------------
-// Initial load: show all products & All Stores
+// 初始載入: 顯示全部產品 + Store Filter 為 All Stores
 // --------------------
-window.addEventListener('DOMContentLoaded', window.searchProduct);
+window.addEventListener('DOMContentLoaded', () => {
+  window.searchProduct();
+});
