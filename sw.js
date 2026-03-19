@@ -1,13 +1,12 @@
 const CACHE_NAME = 'shopping-pwa-v1';
+const BASE_PATH = '/repo-name/'; 
 const urlsToCache = [
-  './',            // index.html
-  './index.html',
-  './style.css',
-  './app.js',
-  './firebase.js',
-  './manifest.json'
+  `${BASE_PATH}index.html`,
+  `${BASE_PATH}style.css`,
+  `${BASE_PATH}app.js`,
+  `${BASE_PATH}firebase.js`,
+  `${BASE_PATH}manifest.json`
 ];
-
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
