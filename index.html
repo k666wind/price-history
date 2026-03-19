@@ -1,46 +1,77 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <!-- Materialize CSS -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
-  <link rel="manifest" href="manifest.json">
   <title>Shopping Tracker</title>
+
+  <!-- Ionic CSS & JS -->
+  <link href="https://cdn.jsdelivr.net/npm/@ionic/core/css/ionic.bundle.css" rel="stylesheet">
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@ionic/core/dist/ionic/ionic.esm.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="style.css">
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
 </head>
-<body class="container">
+<body>
 
-<h4>🛒 Shopping Tracker</h4>
+<ion-app>
+  <ion-header>
+    <ion-toolbar color="primary">
+      <ion-title>🛒 Shopping Tracker</ion-title>
+    </ion-toolbar>
+  </ion-header>
 
-<div class="card">
-  <div class="card-content">
-    <input id="product" placeholder="Product">
-    <input id="price" type="number" placeholder="Price">
-    <input id="store" placeholder="Store">
-    <button class="btn green" onclick="addRecord()">Add</button>
-  </div>
-</div>
+  <ion-content class="ion-padding">
 
-<div class="card">
-  <div class="card-content">
-    <input id="search" placeholder="Search..." oninput="searchProduct()">
-    <div id="result"></div>
-  </div>
-</div>
+    <!-- Add Record -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Add Product</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-item>
+          <ion-label position="floating">Product</ion-label>
+          <ion-input id="product"></ion-input>
+        </ion-item>
+        <ion-item>
+          <ion-label position="floating">Price</ion-label>
+          <ion-input id="price" type="number"></ion-input>
+        </ion-item>
+        <ion-item>
+          <ion-label position="floating">Store</ion-label>
+          <ion-input id="store"></ion-input>
+        </ion-item>
+        <ion-button expand="full" color="success" onclick="addRecord()">Add</ion-button>
+      </ion-card-content>
+    </ion-card>
 
-<canvas id="chart"></canvas>
+    <!-- Search -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Search Product</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-searchbar id="search" onionInput="searchProduct()"></ion-searchbar>
+        <div id="result"></div>
+      </ion-card-content>
+    </ion-card>
 
-<div id="dashboard" class="card"></div>
+    <!-- Dashboard -->
+    <div id="dashboard"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </ion-content>
+</ion-app>
+
 <script type="module" src="firebase.js"></script>
 <script type="module" src="app.js"></script>
-
 <script>
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js');
-}
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 </script>
 
 </body>
