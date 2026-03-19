@@ -1,0 +1,11 @@
+body {
+  background: #f2f2f2;
+}
+
+.card {
+  border-radius: 12px;
+}
+
+canvas {
+  margin-top: 20px;
+}
