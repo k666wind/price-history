@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My PWA</title>
+
+  <!-- PWA manifest -->
+  <link rel="manifest" href="manifest.json">
+
+  <!-- Theme color -->
+  <meta name="theme-color" content="#000000">
+
+  <!-- iOS support -->
+  <link rel="apple-touch-icon" href="icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+</head>
+
+<body>
+  <h1>🚀 My First PWA</h1>
+  <p id="status">Loading...</p>
+
+  <button onclick="sayHello()">Click me</button>
+
+  <script>
+    // simple UI interaction
+    function sayHello() {
+      alert("Hello from your PWA!");
+    }
+
+    // check online/offline
+    function updateStatus() {
+      const status = document.getElementById("status");
+      status.textContent = navigator.onLine ? "🟢 Online" : "🔴 Offline";
+    }
+
+    window.addEventListener("online", updateStatus);
+    window.addEventListener("offline", updateStatus);
+    updateStatus();
+
+    // register service worker
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js")
+        .then(() => console.log("Service Worker Registered"));
+    }
+  </script>
+</body>
+</html>
