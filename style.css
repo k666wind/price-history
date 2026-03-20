@@ -1,33 +1,130 @@
+/* ===== Theme ===== */
 :root {
-  --ion-background-color: #ffffff;
-  --ion-text-color: #000000;
-  --ion-card-header-bg: #f0f0f0;
-  --ion-card-background: #ffffff;
+  --ion-background-color: #f5f5f7;
+  --ion-text-color: #1d1d1f;
+  --card-bg: #ffffff;
+  --card-radius: 20px;
 }
 
 body.dark {
-  --ion-background-color: #121212;
-  --ion-text-color: #ffffff;
-  --ion-card-header-bg: #1e1e1e;
-  --ion-card-background: #1c1c1c;
+  --ion-background-color: #000000;
+  --ion-text-color: #f5f5f7;
+  --card-bg: #1c1c1e;
 }
 
-ion-card {
-  margin: 10px;
-  border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  background-color: var(--ion-card-background);
+/* ===== Font ===== */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Poetsen One', sans-serif;
+  background-color: var(--ion-background-color);
   color: var(--ion-text-color);
 }
 
+/* ===== Global Text Fix ===== */
+ion-content, ion-card, ion-item, ion-label, ion-input, ion-title {
+  color: var(--ion-text-color) !important;
+}
+
+/* ===== Header (iOS style) ===== */
+ion-toolbar {
+  --background: transparent;
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+body.dark ion-toolbar {
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+ion-title {
+  font-weight: 600;
+  font-size: 1.2rem;
+}
+
+/* ===== Cards ===== */
+ion-card {
+  margin: 12px;
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  box-shadow: 
+    0 4px 12px rgba(0,0,0,0.06),
+    0 1px 3px rgba(0,0,0,0.08);
+  transition: all 0.25s ease;
+}
+
+/* hover effect (desktop) */
+ion-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 8px 20px rgba(0,0,0,0.08),
+    0 2px 6px rgba(0,0,0,0.1);
+}
+
+/* ===== Card Header ===== */
 ion-card-header {
-  background-color: var(--ion-card-header-bg);
+  background: transparent;
 }
 
-canvas {
-  margin-top: 10px;
+ion-card-title {
+  font-size: 1.1rem;
+  font-weight: 600;
 }
 
+/* ===== Inputs (iOS rounded style) ===== */
+ion-item {
+  --background: transparent;
+  border-radius: 14px;
+  margin-bottom: 10px;
+  border: 1px solid rgba(0,0,0,0.08);
+  transition: all 0.2s ease;
+}
+
+/* focus glow */
+ion-item:focus-within {
+  border: 1px solid #007aff;
+  box-shadow: 0 0 0 3px rgba(0,122,255,0.15);
+}
+
+/* dark mode border */
+body.dark ion-item {
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* ===== Placeholder ===== */
+ion-input::part(native)::placeholder {
+  color: #999;
+}
+
+/* ===== Buttons (iOS style) ===== */
+ion-button {
+  --border-radius: 14px;
+  --box-shadow: none;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  transition: all 0.2s ease;
+}
+
+/* press animation */
+ion-button:active {
+  transform: scale(0.97);
+}
+
+/* ===== Primary Button ===== */
+ion-button[color="success"] {
+  --background: #34c759;
+}
+
+ion-button[color="tertiary"] {
+  --background: #007aff;
+}
+
+/* ===== Search Bar ===== */
+ion-searchbar {
+  --border-radius: 14px;
+  --background: var(--card-bg);
+  margin-bottom: 10px;
+}
+
+/* ===== Dashboard Grid ===== */
 #dashboard {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -35,25 +132,40 @@ canvas {
   padding: 10px;
 }
 
+/* ===== Table ===== */
 .store-table {
   width: 100%;
   border-collapse: collapse;
   margin-top: 8px;
 }
+
 .store-table th, .store-table td {
-  border: 1px solid #ddd;
-  padding: 6px 8px;
-  text-align: left;
-  color: var(--ion-text-color);
+  padding: 8px;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
 }
-.store-table th {
-  background-color: var(--ion-card-header-bg);
+
+body.dark .store-table th,
+body.dark .store-table td {
+  border-bottom: 1px solid rgba(255,255,255,0.1);
 }
+
+/* highlight */
 .store-table td.lowest {
-  color: green;
-  font-weight: bold;
+  color: #34c759;
+  font-weight: 600;
 }
+
 .store-table td.latest {
-  color: blue;
-  font-weight: bold;
+  color: #007aff;
+  font-weight: 600;
+}
+
+/* ===== Canvas ===== */
+canvas {
+  margin-top: 12px;
+}
+
+/* ===== Smooth Animation ===== */
+* {
+  -webkit-tap-highlight-color: transparent;
 }
