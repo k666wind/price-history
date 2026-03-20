@@ -38,18 +38,20 @@
         <ion-card-title>Add Product</ion-card-title>
       </ion-card-header>
       <ion-card-content>
-        <ion-item>
-          <ion-label position="floating">Product</ion-label>
-          <ion-input id="product"></ion-input>
-        </ion-item>
-        <ion-item>
-          <ion-label position="floating">Price</ion-label>
-          <ion-input id="price" type="number"></ion-input>
-        </ion-item>
-        <ion-item>
-          <ion-label position="floating">Store</ion-label>
-          <ion-input id="store"></ion-input>
-        </ion-item>
+      <ion-item>
+        <ion-icon name="cube-outline" slot="start"></ion-icon>
+        <ion-input id="product" placeholder="Product"></ion-input>
+      </ion-item>
+      
+      <ion-item>
+        <ion-icon name="cash-outline" slot="start"></ion-icon>
+        <ion-input id="price" type="number" placeholder="Price"></ion-input>
+      </ion-item>
+      
+      <ion-item>
+        <ion-icon name="storefront-outline" slot="start"></ion-icon>
+        <ion-input id="store" placeholder="Store"></ion-input>
+      </ion-item>
         <ion-button expand="full" color="success" onclick="addRecord()">Add</ion-button>
       </ion-card-content>
     </ion-card>
