@@ -1,6 +1,5 @@
 import { db } from './firebase.js';
-import { collection, addDoc, getDocs, deleteDoc, doc } 
-from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const productEl = document.getElementById("product");
 const priceEl = document.getElementById("price");
@@ -20,9 +19,12 @@ window.addRecord = async () => {
   const price = parseFloat(priceEl.value);
   if (!product || !store || !price) return alert("Please fill all fields");
 
+  const productLower = product.toLowerCase();
+  const storeLower = store.toLowerCase();
+
   await addDoc(collection(db, "records"), {
-    product: product.toLowerCase(),
-    store: store.toLowerCase(),
+    product: productLower,
+    store: storeLower,
     price,
     date: new Date().toISOString(),
     productOriginal: product,
@@ -33,16 +35,6 @@ window.addRecord = async () => {
   priceEl.value = "";
   storeEl.value = "";
 
-  showToast("Added!");
-  window.searchProduct();
-};
-
-// --------------------
-// DELETE (Swipe)
-// --------------------
-window.deleteRecord = async (id) => {
-  await deleteDoc(doc(db, "records", id));
-  showToast("Deleted");
   window.searchProduct();
 };
 
@@ -52,10 +44,10 @@ window.deleteRecord = async (id) => {
 function getChartColors() {
   const isDark = document.body.classList.contains('dark');
   return {
-    lineBorder: isDark ? 'white' : '#007aff',
-    lineBg: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,122,255,0.2)',
-    barLowest: '#34c759',
-    barOther: isDark ? '#64d2ff' : '#007aff'
+    lineBorder: isDark ? 'white' : 'blue',
+    lineBg: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,255,0.2)',
+    barLowest: 'green',
+    barOther: isDark ? 'lightblue' : 'blue'
   };
 }
 
@@ -63,10 +55,7 @@ function getChartColors() {
 // Render Dashboard
 // --------------------
 function renderDashboard(records) {
-
-  // remove skeleton
   dashboardDiv.innerHTML = "";
-
   const productMap = {};
   records.forEach(r => {
     if (!productMap[r.product]) productMap[r.product] = [];
@@ -74,109 +63,101 @@ function renderDashboard(records) {
   });
 
   for (let prod in productMap) {
-
     const recs = productMap[prod].sort((a,b)=>new Date(b.date)-new Date(a.date));
     const latest = recs[0];
     const lowest = recs.reduce((m,r)=> r.price<m.price?r:m, recs[0]);
 
+    const storeStats = {};
+    recs.forEach(r=>{
+      if (!storeStats[r.store] || r.price < storeStats[r.store]) storeStats[r.store] = r.price;
+    });
+
     const card = document.createElement("ion-card");
 
+    // Store Table
+    let tableHTML = `<table class="store-table"><tr><th>Store</th><th>Lowest Price</th></tr>`;
+    for (let s in storeStats) {
+      const price = storeStats[s];
+      const cls = price===lowest.price ? 'lowest' : (s===latest.store ? 'latest':'');
+      tableHTML += `<tr><td>${s}</td><td class="${cls}">£${price}</td></tr>`;
+    }
+    tableHTML += `</table>`;
+
     card.innerHTML = `
-      <ion-card-header>
-        <ion-card-title>${latest.productOriginal}</ion-card-title>
-      </ion-card-header>
+      <ion-card-header><ion-card-title>${latest.productOriginal}</ion-card-title></ion-card-header>
       <ion-card-content>
-
-        ${recs.map(r => `
-          <ion-item-sliding>
-            <ion-item>
-              £${r.price} @ ${r.storeOriginal}
-            </ion-item>
-
-            <ion-item-options side="end">
-              <ion-item-option color="danger" onclick="deleteRecord('${r.id}')">
-                Delete
-              </ion-item-option>
-            </ion-item-options>
-          </ion-item-sliding>
-        `).join("")}
-
-        <canvas id="line-${prod}"></canvas>
-        <canvas id="bar-${prod}"></canvas>
-
+        <p>Latest: £${latest.price} @ ${latest.storeOriginal} (${latest.date.split("T")[0]})</p>
+        <p>Lowest: £${lowest.price} @ ${lowest.storeOriginal} (${lowest.date.split("T")[0]})</p>
+        ${tableHTML}
+        <canvas id="line-${prod}" style="margin-top:10px;"></canvas>
+        <canvas id="bar-${prod}" style="margin-top:10px;"></canvas>
       </ion-card-content>
     `;
-
     dashboardDiv.appendChild(card);
 
     const colors = getChartColors();
 
-    // Chart animation
+    // Line Chart
     const lineCtx = document.getElementById(`line-${prod}`).getContext('2d');
+    if (charts[`line-${prod}`]) charts[`line-${prod}`].destroy();
     charts[`line-${prod}`] = new Chart(lineCtx, {
       type:'line',
-      data:{
-        labels: recs.map(r=>r.date.split("T")[0]),
-        datasets:[{
-          data: recs.map(r=>r.price),
-          borderColor: colors.lineBorder,
-          backgroundColor: colors.lineBg,
-          tension: 0.4
-        }]
-      },
-      options:{
-        animation:{duration:800}
-      }
+      data:{labels: recs.map(r=>r.date.split("T")[0]), datasets:[{
+        label:'Price Trend',
+        data: recs.map(r=>r.price),
+        borderColor: colors.lineBorder,
+        backgroundColor: colors.lineBg
+      }]}
     });
 
+    // Bar Chart
     const barCtx = document.getElementById(`bar-${prod}`).getContext('2d');
+    if (charts[`bar-${prod}`]) charts[`bar-${prod}`].destroy();
     charts[`bar-${prod}`] = new Chart(barCtx, {
       type:'bar',
       data:{
-        labels: recs.map(r=>r.storeOriginal),
+        labels:Object.keys(storeStats),
         datasets:[{
-          data: recs.map(r=>r.price),
-          backgroundColor: colors.barOther
+          label:'Lowest Price',
+          data:Object.values(storeStats),
+          backgroundColor:Object.values(storeStats).map(p=> p===lowest.price ? colors.barLowest : colors.barOther)
         }]
       },
-      options:{
-        animation:{duration:800},
-        plugins:{legend:{display:false}}
-      }
+      options:{plugins:{legend:{display:false}}}
     });
   }
 }
 
 // --------------------
-// Search
+// Search Product (case-insensitive)
 // --------------------
 window.searchProduct = async function() {
-
-  // show skeleton
-  dashboardDiv.innerHTML = `
-    <div class="skeleton-card"></div>
-    <div class="skeleton-card"></div>
-  `;
-
   const keyword = document.getElementById("search").value.trim().toLowerCase();
 
   const snapshot = await getDocs(collection(db, "records"));
   const records = [];
-  snapshot.forEach(doc => {
-    const data = doc.data();
-    data.id = doc.id; // ⭐重要
-    records.push(data);
+  snapshot.forEach(doc => records.push(doc.data()));
+
+  // Fill store select options
+  const storeSet = new Set(records.map(r=>r.store));
+  filterStoreEl.innerHTML = '<ion-select-option value="">All Stores</ion-select-option>';
+  storeSet.forEach(s=>{
+    filterStoreEl.innerHTML += `<ion-select-option value="${s}">${s}</ion-select-option>`;
   });
 
+  // Default store filter = All Stores
+  const storeFilter = filterStoreEl.value ?? "";
+
   let filtered = records.filter(r =>
-    (!keyword || r.product.includes(keyword))
+    (!keyword || r.product.includes(keyword)) &&
+    (!storeFilter || r.store === storeFilter)
   );
 
   renderDashboard(filtered);
 };
 
 // --------------------
-// CSV Export / Import（保持）
+// Export CSV
 // --------------------
 window.exportCSV = async () => {
   const snapshot = await getDocs(collection(db, "records"));
@@ -197,4 +178,52 @@ window.exportCSV = async () => {
 };
 
 // --------------------
-document.addEventListener('DOMContentLoaded', window.searchProduct);
+// Import CSV
+// --------------------
+importCSVEl.addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const text = await file.text();
+  const lines = text.split("\n").slice(1);
+  for(let line of lines){
+    if(!line.trim()) continue;
+    const [product, store, price, date] = line.split(",");
+    if(!product || !store || !price) continue;
+    await addDoc(collection(db,"records"),{
+      product: product.toLowerCase().trim(),
+      store: store.toLowerCase().trim(),
+      price: parseFloat(price),
+      date: date || new Date().toISOString(),
+      productOriginal: product,
+      storeOriginal: store
+    });
+  }
+  window.searchProduct();
+});
+
+// --------------------
+// ⚡ Reliable Initialization (Ionic-friendly)
+// --------------------
+async function initializeDashboard() {
+  const snapshot = await getDocs(collection(db, "records"));
+  const records = [];
+  snapshot.forEach(doc => records.push(doc.data()));
+
+  // Fill store options first
+  const storeSet = new Set(records.map(r=>r.store));
+  filterStoreEl.innerHTML = '<ion-select-option value="">All Stores</ion-select-option>';
+  storeSet.forEach(s=>{
+    filterStoreEl.innerHTML += `<ion-select-option value="${s}">${s}</ion-select-option>`;
+  });
+
+  // Wait a short moment to let Ionic render the select
+  setTimeout(()=>{
+    filterStoreEl.value = "";  // All Stores
+    renderDashboard(records);   // show all products
+  }, 50);
+}
+
+// --------------------
+// DOM Loaded
+// --------------------
+document.addEventListener('DOMContentLoaded', initializeDashboard);
