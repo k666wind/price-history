@@ -1,171 +1,93 @@
-/* ===== Theme ===== */
 :root {
   --ion-background-color: #f5f5f7;
   --ion-text-color: #1d1d1f;
   --card-bg: #ffffff;
-  --card-radius: 20px;
 }
 
 body.dark {
-  --ion-background-color: #000000;
+  --ion-background-color: #000;
   --ion-text-color: #f5f5f7;
   --card-bg: #1c1c1e;
 }
 
-/* ===== Font ===== */
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Poetsen One', sans-serif;
-  background-color: var(--ion-background-color);
-  color: var(--ion-text-color);
+/* ===== FONT ===== */
+.title-font {
+  font-family: 'Poetsen One', sans-serif;
 }
 
-/* ===== Global Text Fix ===== */
-ion-content, ion-card, ion-item, ion-label, ion-input, ion-title {
+/* ===== TEXT FIX ===== */
+body, ion-card-title, ion-label, h2 {
   color: var(--ion-text-color) !important;
 }
 
-/* ===== Header (iOS style) ===== */
+/* ===== HEADER ===== */
 ion-toolbar {
+  backdrop-filter: blur(10px);
   --background: transparent;
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(0,0,0,0.05);
 }
 
-body.dark ion-toolbar {
-  border-bottom: 1px solid rgba(255,255,255,0.1);
-}
-
-ion-title {
-  font-weight: 600;
-  font-size: 1.2rem;
-}
-
-/* ===== Cards ===== */
+/* ===== CARD ===== */
 ion-card {
-  margin: 12px;
-  border-radius: var(--card-radius);
+  border-radius: 20px;
   background: var(--card-bg);
-  box-shadow: 
-    0 4px 12px rgba(0,0,0,0.06),
-    0 1px 3px rgba(0,0,0,0.08);
-  transition: all 0.25s ease;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.08);
 }
 
-/* hover effect (desktop) */
-ion-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 
-    0 8px 20px rgba(0,0,0,0.08),
-    0 2px 6px rgba(0,0,0,0.1);
-}
-
-/* ===== Card Header ===== */
-ion-card-header {
-  background: transparent;
-}
-
-ion-card-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-}
-
-/* ===== Inputs (iOS rounded style) ===== */
+/* ===== INPUT ===== */
 ion-item {
-  --background: transparent;
   border-radius: 14px;
   margin-bottom: 10px;
-  border: 1px solid rgba(0,0,0,0.08);
-  transition: all 0.2s ease;
+  border: 1px solid rgba(0,0,0,0.1);
 }
 
-/* focus glow */
-ion-item:focus-within {
-  border: 1px solid #007aff;
-  box-shadow: 0 0 0 3px rgba(0,122,255,0.15);
-}
-
-/* dark mode border */
 body.dark ion-item {
   border: 1px solid rgba(255,255,255,0.1);
 }
 
-/* ===== Placeholder ===== */
-ion-input::part(native)::placeholder {
-  color: #999;
+/* focus */
+ion-item:focus-within {
+  border: 1px solid #007aff;
+  box-shadow: 0 0 0 3px rgba(0,122,255,0.2);
 }
 
-/* ===== Buttons (iOS style) ===== */
+/* ===== BUTTON ===== */
 ion-button {
   --border-radius: 14px;
-  --box-shadow: none;
-  font-weight: 500;
-  letter-spacing: 0.3px;
-  transition: all 0.2s ease;
 }
 
-/* press animation */
-ion-button:active {
-  transform: scale(0.97);
+/* ===== SKELETON ===== */
+.skeleton-card {
+  height: 120px;
+  border-radius: 20px;
+  margin: 10px 0;
+  background: linear-gradient(
+    90deg,
+    #eee 25%,
+    #ddd 37%,
+    #eee 63%
+  );
+  background-size: 400% 100%;
+  animation: shimmer 1.2s infinite;
 }
 
-/* ===== Primary Button ===== */
-ion-button[color="success"] {
-  --background: #34c759;
+body.dark .skeleton-card {
+  background: linear-gradient(
+    90deg,
+    #2a2a2a 25%,
+    #3a3a3a 37%,
+    #2a2a2a 63%
+  );
 }
 
-ion-button[color="tertiary"] {
-  --background: #007aff;
+@keyframes shimmer {
+  0% { background-position: 100% 0 }
+  100% { background-position: -100% 0 }
 }
 
-/* ===== Search Bar ===== */
-ion-searchbar {
-  --border-radius: 14px;
-  --background: var(--card-bg);
+/* ===== SWIPE ITEM ===== */
+.swipe-item {
+  background: var(--card-bg);
+  border-radius: 16px;
   margin-bottom: 10px;
-}
-
-/* ===== Dashboard Grid ===== */
-#dashboard {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  grid-gap: 15px;
-  padding: 10px;
-}
-
-/* ===== Table ===== */
-.store-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 8px;
-}
-
-.store-table th, .store-table td {
-  padding: 8px;
-  border-bottom: 1px solid rgba(0,0,0,0.05);
-}
-
-body.dark .store-table th,
-body.dark .store-table td {
-  border-bottom: 1px solid rgba(255,255,255,0.1);
-}
-
-/* highlight */
-.store-table td.lowest {
-  color: #34c759;
-  font-weight: 600;
-}
-
-.store-table td.latest {
-  color: #007aff;
-  font-weight: 600;
-}
-
-/* ===== Canvas ===== */
-canvas {
-  margin-top: 12px;
-}
-
-/* ===== Smooth Animation ===== */
-* {
-  -webkit-tap-highlight-color: transparent;
+  padding: 12px;
 }
