@@ -1,6 +1,6 @@
 {
   "name": "Shopping Tracker",
-  "short_name": "Shop",
+  "short_name": "Shop Track",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
