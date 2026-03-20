@@ -1,33 +1,59 @@
-body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
-               Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
-  margin: 0; padding: 0;
-  background: #fff;
-  color: #000;
+:root {
+  --ion-background-color: #ffffff;
+  --ion-text-color: #000000;
+  --ion-card-header-bg: #f0f0f0;
+  --ion-card-background: #ffffff;
 }
 
-ion-header, ion-toolbar {
-  --background: #f2f2f7;
+body.dark {
+  --ion-background-color: #121212;
+  --ion-text-color: #ffffff;
+  --ion-card-header-bg: #1e1e1e;
+  --ion-card-background: #1c1c1c;
 }
 
-ion-title {
-  font-weight: 600;
+ion-card {
+  margin: 10px;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  background-color: var(--ion-card-background);
+  color: var(--ion-text-color);
 }
 
-.apple-input {
-  --border-radius: 12px;
-  --background: #f2f2f7;
-  margin: 8px;
+ion-card-header {
+  background-color: var(--ion-card-header-bg);
 }
 
-ion-button {
-  --border-radius: 12px;
-  margin: 8px;
+canvas {
+  margin-top: 10px;
 }
 
-/* Dark mode */
-@media (prefers-color-scheme: dark) {
-  body { background: #000; color: #fff; }
-  ion-header, ion-toolbar { --background: #1c1c1e; }
-  .apple-input { --background: #2c2c2e; }
+#dashboard {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-gap: 15px;
+  padding: 10px;
+}
+
+.store-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+}
+.store-table th, .store-table td {
+  border: 1px solid #ddd;
+  padding: 6px 8px;
+  text-align: left;
+  color: var(--ion-text-color);
+}
+.store-table th {
+  background-color: var(--ion-card-header-bg);
+}
+.store-table td.lowest {
+  color: green;
+  font-weight: bold;
+}
+.store-table td.latest {
+  color: blue;
+  font-weight: bold;
 }
