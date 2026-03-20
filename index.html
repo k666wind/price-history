@@ -5,113 +5,101 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Shopping Tracker</title>
 
+<!-- Ionic CSS & JS -->
 <link href="https://cdn.jsdelivr.net/npm/@ionic/core/css/ionic.bundle.css" rel="stylesheet">
 <script type="module" src="https://cdn.jsdelivr.net/npm/@ionic/core/dist/ionic/ionic.esm.js"></script>
 
+<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<link rel="manifest" href="manifest.json">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
-<link rel="apple-touch-icon" href="icon.png">
-<!-- Font -->
-<link href="https://fonts.googleapis.com/css2?family=Poetsen+One&display=swap" rel="stylesheet">
 
 <link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
 </head>
-
 <body>
+
 <ion-app>
+  <ion-header>
+    <ion-toolbar color="primary">
+<header>
+      <img src="icon.png" alt="Price History" style="height:32px; vertical-align:middle; margin-right:8px;">Price History</ion-title>
+  <!-- h1>Price History</h1> -->
+</header>
+    </ion-toolbar>
+  </ion-header>
 
-<!-- Header -->
-<ion-header>
-  <ion-toolbar>
-    <ion-title class="title-font">Price History</ion-title>
-  </ion-toolbar>
-</ion-header>
-
-<ion-content class="ion-padding">
-
-<!-- Dark Mode -->
-<ion-button expand="block" onclick="toggleDarkMode()">Toggle Dark Mode</ion-button>
-
-<!-- Add Button (open modal) -->
-<ion-button expand="block" onclick="openModal()">+ Add Product</ion-button>
-
-<!-- Search -->
-<ion-card>
-  <ion-card-header>
-    <ion-card-title class="card-title">Search Product</ion-card-title>
-  </ion-card-header>
-
-  <ion-card-content>
-    <ion-searchbar id="search"></ion-searchbar>
-  </ion-card-content>
-</ion-card>
-
-<!-- Dashboard -->
-<div id="dashboard">
-
-  <!-- Skeleton -->
-  <div class="skeleton-card"></div>
-  <div class="skeleton-card"></div>
-
-</div>
-
-</ion-content>
-
-<!-- Modal -->
-<ion-modal id="addModal">
   <ion-content class="ion-padding">
 
-    <h2 class="title-font">Add Product</h2>
+    <!-- Dark Mode Toggle -->
+    <ion-button expand="block" onclick="toggleDarkMode()">Toggle Dark / Light Mode</ion-button>
 
-    <ion-item>
-      <ion-input id="product" placeholder="Product"></ion-input>
-    </ion-item>
+    <!-- Add Product -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Add Product</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+      <ion-item>
+        <ion-icon name="cube-outline" slot="start"></ion-icon>
+        <ion-input id="product" placeholder="Product"></ion-input>
+      </ion-item>
+      
+      <ion-item>
+        <ion-icon name="cash-outline" slot="start"></ion-icon>
+        <ion-input id="price" type="number" placeholder="Price"></ion-input>
+      </ion-item>
+      
+      <ion-item>
+        <ion-icon name="storefront-outline" slot="start"></ion-icon>
+        <ion-input id="store" placeholder="Store"></ion-input>
+      </ion-item>
+        <ion-button expand="full" color="success" onclick="addRecord()">Add</ion-button>
+      </ion-card-content>
+    </ion-card>
 
-    <ion-item>
-      <ion-input id="price" type="number" placeholder="Price"></ion-input>
-    </ion-item>
+    <!-- Search -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Search Product</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-searchbar id="search"></ion-searchbar>
+        <ion-item>
+          <ion-label>Filter by store</ion-label>
+          <ion-select id="filterStore">
+            <ion-select-option value="">All Stores</ion-select-option>
+          </ion-select>
+        </ion-item>
+      </ion-card-content>
+    </ion-card>
 
-    <ion-item>
-      <ion-input id="store" placeholder="Store"></ion-input>
-    </ion-item>
+    <!-- Dashboard -->
+    <div id="dashboard"></div>
 
-    <ion-button expand="block" onclick="saveProduct()">Save</ion-button>
-    <ion-button expand="block" fill="clear" onclick="closeModal()">Cancel</ion-button>
+    <!-- Import / Export -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Import / Export CSV</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <input type="file" id="importCSV" accept=".csv">
+        <ion-button expand="full" color="tertiary" onclick="exportCSV()">Export CSV</ion-button>
+      </ion-card-content>
+    </ion-card>
 
   </ion-content>
-</ion-modal>
+</ion-app>
 
+<script type="module" src="firebase.js"></script>
+<script type="module" src="app.js"></script>
 <script>
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+document.getElementById("search").addEventListener('ionInput', () => window.searchProduct());
+document.getElementById("filterStore").addEventListener('ionChange', () => window.searchProduct());
+
 window.toggleDarkMode = () => {
   document.body.classList.toggle('dark');
 }
-
-window.openModal = () => {
-  document.getElementById('addModal').present();
-}
-
-window.closeModal = () => {
-  document.getElementById('addModal').dismiss();
-}
-
-/* Toast */
-window.showToast = async (msg) => {
-  const toast = document.createElement('ion-toast');
-  toast.message = msg;
-  toast.duration = 1500;
-  document.body.appendChild(toast);
-  await toast.present();
-}
-
-/* Fake save */
-window.saveProduct = () => {
-  showToast("Added!");
-  closeModal();
-}
 </script>
 
-</ion-app>
 </body>
 </html>
