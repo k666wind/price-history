@@ -1,7 +1,7 @@
 {
   "name": "Shopping Tracker",
   "short_name": "Shop Track",
-  "start_url": "/",
+  "start_url": "/shopping-pwa/index.html",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#3880ff",
