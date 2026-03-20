@@ -1,105 +1,48 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Shopping Tracker</title>
-
-<!-- Ionic CSS & JS -->
-<link href="https://cdn.jsdelivr.net/npm/@ionic/core/css/ionic.bundle.css" rel="stylesheet">
-<script type="module" src="https://cdn.jsdelivr.net/npm/@ionic/core/dist/ionic/ionic.esm.js"></script>
-
-<!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<link rel="stylesheet" href="style.css">
-<link rel="manifest" href="manifest.json">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shopping PWA</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+  <script src="app.js" defer></script>
 </head>
 <body>
-
-<ion-app>
-  <ion-header>
-    <ion-toolbar color="primary">
-<header>
-      <img src="icon.png" alt="Price History" style="height:32px; vertical-align:middle; margin-right:8px;">Price History</ion-title>
-  <!-- h1>Price History</h1> -->
-</header>
-    </ion-toolbar>
-  </ion-header>
-
-  <ion-content class="ion-padding">
-
-    <!-- Dark Mode Toggle -->
-    <ion-button expand="block" onclick="toggleDarkMode()">Toggle Dark / Light Mode</ion-button>
-
-    <!-- Add Product -->
-    <ion-card>
-      <ion-card-header>
-        <ion-card-title>Add Product</ion-card-title>
-      </ion-card-header>
-      <ion-card-content>
-      <ion-item>
-        <ion-icon name="cube-outline" slot="start"></ion-icon>
-        <ion-input id="product" placeholder="Product"></ion-input>
-      </ion-item>
-      
-      <ion-item>
-        <ion-icon name="cash-outline" slot="start"></ion-icon>
-        <ion-input id="price" type="number" placeholder="Price"></ion-input>
-      </ion-item>
-      
-      <ion-item>
-        <ion-icon name="storefront-outline" slot="start"></ion-icon>
-        <ion-input id="store" placeholder="Store"></ion-input>
-      </ion-item>
-        <ion-button expand="full" color="success" onclick="addRecord()">Add</ion-button>
-      </ion-card-content>
-    </ion-card>
-
-    <!-- Search -->
-    <ion-card>
-      <ion-card-header>
-        <ion-card-title>Search Product</ion-card-title>
-      </ion-card-header>
-      <ion-card-content>
-        <ion-searchbar id="search"></ion-searchbar>
-        <ion-item>
-          <ion-label>Filter by store</ion-label>
-          <ion-select id="filterStore">
-            <ion-select-option value="">All Stores</ion-select-option>
-          </ion-select>
+  <ion-app>
+    <ion-header>
+      <ion-toolbar>
+        <ion-title>Shopping List</ion-title>
+      </ion-toolbar>
+      <ion-searchbar placeholder="Search Product" [(ngModel)]="searchText"></ion-searchbar>
+    </ion-header>
+    <ion-content>
+      <ion-list>
+        <ion-item lines="none" class="apple-input">
+          <ion-input label="Product" labelPlacement="floating" [(ngModel)]="product"></ion-input>
         </ion-item>
-      </ion-card-content>
-    </ion-card>
+        <ion-item lines="none" class="apple-input">
+          <ion-input label="Price" type="number" labelPlacement="floating" [(ngModel)]="price"></ion-input>
+        </ion-item>
+        <ion-item lines="none" class="apple-input">
+          <ion-input label="Store" labelPlacement="floating" [(ngModel)]="store"></ion-input>
+        </ion-item>
+        <ion-button expand="full" (click)="addEntry()">Add Entry</ion-button>
 
-    <!-- Dashboard -->
-    <div id="dashboard"></div>
+        <ion-item-sliding *ngFor="let record of filteredRecords()">
+          <ion-item>
+            <ion-label>
+              {{record.product}} - ${{record.price}} @ {{record.store}}
+            </ion-label>
+          </ion-item>
+          <ion-item-options side="end">
+            <ion-item-option color="danger" (click)="removeEntry(record)">Delete</ion-item-option>
+          </ion-item-options>
+        </ion-item-sliding>
+      </ion-list>
 
-    <!-- Import / Export -->
-    <ion-card>
-      <ion-card-header>
-        <ion-card-title>Import / Export CSV</ion-card-title>
-      </ion-card-header>
-      <ion-card-content>
-        <input type="file" id="importCSV" accept=".csv">
-        <ion-button expand="full" color="tertiary" onclick="exportCSV()">Export CSV</ion-button>
-      </ion-card-content>
-    </ion-card>
-
-  </ion-content>
-</ion-app>
-
-<script type="module" src="firebase.js"></script>
-<script type="module" src="app.js"></script>
-<script>
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
-document.getElementById("search").addEventListener('ionInput', () => window.searchProduct());
-document.getElementById("filterStore").addEventListener('ionChange', () => window.searchProduct());
-
-window.toggleDarkMode = () => {
-  document.body.classList.toggle('dark');
-}
-</script>
-
+      <canvas id="priceChart"></canvas>
+    </ion-content>
+  </ion-app>
 </body>
 </html>
