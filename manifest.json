@@ -1,9 +1,9 @@
 {
-  "name": "Shopping Tracker",
-  "short_name": "Shop Track",
+  "name": "Price History",
+  "short_name": "Price History",
   "description": "Track product prices across different stores",
-  "start_url": "/shopping-pwa/index.html",
-  "scope": "/shopping-pwa/",
+  "start_url": "/price-history/index.html",
+  "scope": "/price-history/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#ffffff",
@@ -16,7 +16,7 @@
       "purpose": "any"
     },
     {
-      "src": "icon-512.png",
+      "src": "icon.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
