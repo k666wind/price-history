@@ -1,0 +1,21 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // records collection: 必須登入（包括 Anonymous Auth）先可以讀寫
+    match /records/{docId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // 其他所有 collection 一律拒絕，收窄 attack surface
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+// 部署方法：
+// firebase deploy --only firestore:rules
+//
+// 部署之前記得喺 Firebase Console 開啟 Authentication > Sign-in method > Anonymous
+// 否則 signInAnonymously() 會失敗，導致 app 完全用唔到（fail closed，安全但要記得開）

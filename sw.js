@@ -1,78 +1,50 @@
-const CACHE_NAME = 'shopping-pwa-v2';
+const CACHE_NAME = 'shopping-pwa-v2'; // Fix: bump version so updated assets 唔會俾舊 cache 卡住
+
+// Replace 'your-repo-name' with your actual GitHub repo name
 const BASE_PATH = '/shopping-pwa/';
 
 const urlsToCache = [
-  `${BASE_PATH}`,
+  `${BASE_PATH}`,            // index.html via repo root
   `${BASE_PATH}index.html`,
   `${BASE_PATH}style.css`,
   `${BASE_PATH}app.js`,
   `${BASE_PATH}firebase.js`,
-  `${BASE_PATH}manifest.json`,
-  `${BASE_PATH}icon.png`,
-  `${BASE_PATH}icon-512.png`,
-  `${BASE_PATH}price-history-banner.png`
+  `${BASE_PATH}manifest.json`
 ];
 
-// ✅ Install: cache all assets
 self.addEventListener('install', event => {
   console.log('[Service Worker] Installing...');
-  // ✅ Skip waiting so new SW activates immediately
-  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(
         urlsToCache.map(url => new Request(url, { cache: 'reload' }))
       ))
+      .then(() => self.skipWaiting()) // Fix: 新 SW 即刻接手，唔使用戶 refresh 兩次
       .catch(err => console.error('[Service Worker] Cache addAll failed:', err))
   );
 });
 
-// ✅ Activate: clear old caches and claim clients immediately
 self.addEventListener('activate', event => {
   console.log('[Service Worker] Activating...');
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(
+    caches.keys().then(keys => {
+      return Promise.all(
         keys.map(key => {
           if (key !== CACHE_NAME) {
             console.log('[Service Worker] Removing old cache:', key);
             return caches.delete(key);
           }
         })
-      )
-    ).then(() => {
-      // ✅ Take control of all open clients without requiring a reload
-      return self.clients.claim();
-    })
+      );
+    }).then(() => self.clients.claim()) // Fix: 即刻控制所有開緊嘅 tab
   );
 });
 
-// ✅ Fetch: Cache-First for static assets, Network-First for Firestore/API
 self.addEventListener('fetch', event => {
-  const url = new URL(event.request.url);
-
-  // Let Firestore and external API calls go through the network directly
-  if (
-    url.hostname.includes('firestore.googleapis.com') ||
-    url.hostname.includes('firebase') ||
-    url.hostname.includes('gstatic.com') ||
-    url.hostname.includes('cdn.jsdelivr.net')
-  ) {
-    return; // Don't intercept — let browser handle normally
-  }
-
-  // Cache-First for local assets
   event.respondWith(
     caches.match(event.request).then(response => {
-      if (response) return response;
-      return fetch(event.request).then(networkResponse => {
-        // Optionally cache new responses
-        return caches.open(CACHE_NAME).then(cache => {
-          cache.put(event.request, networkResponse.clone());
-          return networkResponse;
-        });
-      }).catch(() => {
-        // Offline fallback for document requests
+      return response || fetch(event.request).catch(() => {
+        // Optional: fallback if offline and resource not cached
         if (event.request.destination === 'document') {
           return caches.match(`${BASE_PATH}index.html`);
         }
