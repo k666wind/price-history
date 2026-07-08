@@ -26,6 +26,21 @@ users/{uid}/records_{catId}/{docId}     # 每個分類底下的價格記錄
 
 ---
 
+## Session 4 已完成的修改（5 個新功能）
+
+1. **Count denormalization（解決 N+1 查詢）**：新增 `users/{uid}/meta/counts` 文件，格式 `{counts:{catId:number}}`。`tracker.html` 每次 `fetchRecords()` 真正向 server 攞新資料後，都會 `setDoc(...,{merge:true})` 寫返實際長度（唔用 `increment()`，直接寫返真實數字，等有偏差都自動修正）。`index.html` 嘅 `loadRecordCounts()` 而家淨係一個 `getDoc`，唔再逐個分類 `getDocs`。
+   - ⚠️ **Migration 限制**：呢個 feature 上線之前已經有記錄、但用戶未開過嗰個分類嘅 tracker 頁，會顯示 0/"New"，一旦打開一次個分類就會自動補返正確數字（self-healing）。冇做主動 backfill script。
+   - `firestore.rules` 已加 `meta` 做合法 `collectionId`。
+2. **CSV 匯入去重**：`product|store|price|date` 做 signature，匯入前攞晒現有記錄嘅 signature set，遇到重複就跳過（同時防止同一份 CSV 入面自己有重複行）。Import 完成 toast 會顯示 `skipped N duplicate(s)`。
+3. **歷史最低價慶祝提示**：Add Record 之前，先攞返呢個商品現有嘅最低價同新價錢比較；如果呢個商品之前有記錄（唔係第一次新增）並且創咗新低，Add 完會顯示 `🎉 New record low for "xxx"!` 特別 toast，唔係就顯示返平時嘅 `Record added ✓`。
+4. **Expand all / Collapse all 按鈕**：喺 search bar 下面、dashboard 上面加咗個按鈕，按鈕文字會根據目前狀態自動切換（`Expand all ▾` / `Collapse all ▴`），冇記錄時自動隱藏。`toggleDetails(domId, forceOpen)` 加咗第二個參數，畀單一 item click 同呢個全域按鈕共用同一套邏輯。
+5. **自訂分類自動配色**：新增 `CAT_PALETTE`（8 組 `color/blob/pill/pillText`），建立自訂分類時根據現有自訂分類數量輪流揀一組寫入 Firestore，令自訂分類唔會全部都係 fallback 橙色，`index.html` 分類卡片同 `tracker.html` 個 `--cat-color` 都會用返呢啲顏色。
+   - ⚠️ **舊有自訂分類唔會自動補色**：喺呢個功能上線之前建立嘅自訂分類冇 `color/blob/pill` 欄位，會繼續 fallback 用返 `#f4845f`。如果想全部補齊，可以之後寫個一次性 migration script 幫佢哋逐個 `setDoc(...,{merge:true})` 補返顏色。
+
+以上全部改動都用 `node --check`（script）+ `html.parser`（HTML）+ `json.load`（manifest.json）驗證過語法。
+
+---
+
 ## Session 3 已完成的修改（firestore.rules / manifest.json / style.css 清理）
 
 1. **`firestore.rules` 改到符合實際資料路徑**：舊規則只覆蓋 `/records/{docId}`（程式碼根本冇用呢個 collection），而家改成 `match /users/{uid}/{collectionId}/{docId}`，加咗 `request.auth.uid == uid` ownership check，並限制 `collectionId` 一定要係 `categories` 或者 `records_*`，其他一律 catch-all deny。**呢個係本來 review 度標示嘅最高優先級問題，而家已修好，記得 `firebase deploy --only firestore:rules` 部署上去，同埋去 Firebase Console 對一次現行規則有冇跟住更新。**
@@ -80,19 +95,19 @@ match /users/{uid}/records_{catId}/{docId} {
 ```
 
 ### 其他尚未處理的項目（優先度供參考）
-- **N+1 查詢**：`index.html` 的 `loadRecordCounts()` 對每個分類各自發一次 `getDocs`，分類多時效能差。建議改成在 category 文件上維護 `count` 欄位，新增/刪除記錄時用 `increment()` 更新。
+- ~~N+1 查詢~~：**已在 Session 4 解決**，改用 `users/{uid}/meta/counts` denormalized count。
 - ~~Chart.js 記憶體洩漏風險~~：**已在 Session 2 解決**。
-- **CSV 匯入無去重機制**：重複匯入同一份 CSV 會產生重複記錄。
+- ~~CSV 匯入無去重機制~~：**已在 Session 4 解決**。
 - ~~`style.css` 係死檔案~~：**已在 Session 3 刪除**。
 - ~~`manifest.json` 嘅 `theme_color` 同實際 UI 唔一致~~：**已在 Session 3 修正**（連 `background_color` 都一齊改咗）。
 - ~~Firestore 規則同實際路徑不符~~：**已在 Session 3 修正**，但**尚未部署**，記得手動 `firebase deploy --only firestore:rules`。
-- **價格提示只跟上一筆比**：`updatePriceHint()` / `trendBadge()` 只比較最近一兩筆，沒有跟歷史最低價比較，可能誤導使用者。
-- **分類顏色資訊不完整**：`index.html` 只把單一 `color` 傳給 tracker 頁，預設分類其實有更完整的 `pill`/`pillText`/`blob` 色票沒有被利用。
+- **價格提示只跟上一筆比**：`updatePriceHint()` / `trendBadge()` 只比較最近一兩筆，沒有跟歷史最低價比較，可能誤導使用者。（Session 4 的「歷史最低價慶祝提示」只在**新增記錄嗰一刻**判斷一次，冇改到呢兩個顯示用嘅函式本身。）
+- ~~分類顏色資訊不完整~~：**已在 Session 4 部分解決** —— 新建立嘅自訂分類會自動配 `color/blob/pill/pillText`（8 色 palette 輪流），但**舊有自訂分類冇補色**，仍然 fallback 橙色。
 
 ---
 
 ## 給下一個 Claude 對話的提示
 
-- 這次修改的完整專案已打包成 `price-history-2.1-fixed.zip` 給使用者下載，若使用者在新對話中重新上傳，請先讀這份 `HANDOVER.md` 了解已完成/未完成的部分，不要重複做同樣的修正。
+- 這次修改的完整專案已打包成 zip 給使用者下載，若使用者在新對話中重新上傳，請先讀這份 `HANDOVER.md` 了解已完成/未完成的部分，不要重複做同樣的修正。
 - 使用者偏好：先問清楚「哪個才是正式版/實際部署路徑」等關鍵假設，不要用預設猜測值直接改重要設定（例如 BASE_PATH、正式版檔案）。
-- 使用者對 `firestore.rules` 的決定是「保留現狀」，除非使用者主動提起，否則不要擅自修改該檔案。
+- `firestore.rules` 已喺 Session 3 按使用者要求改到符合實際資料路徑（`users/{uid}/categories`、`users/{uid}/records_*`、`users/{uid}/meta`），但**尚未部署去 Firebase Console**，記得提醒使用者手動 `firebase deploy --only firestore:rules`。

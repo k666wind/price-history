@@ -208,6 +208,16 @@
     .badge-down    { background:#f0fdf4; color:#059669; border-color:#bbf7d0; }
     .badge-stable  { background:#fafaf9; color:var(--muted); border-color:var(--border2); }
 
+    /* Expand all / collapse all */
+    .dash-toolbar { display:flex; justify-content:flex-end; margin:2px 2px 10px; }
+    .toggle-all-btn {
+      background:var(--surface); border:2px solid var(--border2); border-radius:999px;
+      padding:7px 16px; font-family:'Nunito',sans-serif; font-size:0.74rem; font-weight:800;
+      color:var(--text2); cursor:pointer; letter-spacing:0.02em;
+      transition:border-color 0.15s, color 0.15s, transform 0.15s;
+    }
+    .toggle-all-btn:hover { border-color:var(--cat-color); color:var(--cat-color); transform:translateY(-1px); }
+
     /* Expand / collapse toggle */
     .expand-toggle {
       width:100%; display:flex; align-items:center; justify-content:center; gap:8px;
@@ -348,6 +358,10 @@
         </select>
       </div>
 
+      <div class="dash-toolbar">
+        <button class="toggle-all-btn" id="toggleAllBtn" style="display:none">Expand all ▾</button>
+      </div>
+
       <div id="dashboard"></div>
 
       <div class="csv-row">
@@ -366,7 +380,7 @@
   import { auth, db } from './firebase.js';
   import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
   import {
-    collection, addDoc, getDocs, deleteDoc, doc, query, orderBy
+    collection, addDoc, getDocs, deleteDoc, doc, setDoc, query, orderBy
   } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   const params   = new URLSearchParams(location.search);
@@ -397,10 +411,20 @@
 
   function col() { return collection(db,`users/${currentUser.uid}/records_${catId}`); }
 
+  // 將呢個分類實際嘅 record 數量寫返去 users/{uid}/meta/counts，畀 index.html 一次過讀晒唔使 N+1 query。
+  // 用實際長度直接 set（唔用 increment），咁樣就算之前有偏差都會自動修正（self-healing），
+  // fire-and-forget，唔阻頭阻勢主流程，失敗都只係影響 index.html 個分類卡片顯示嘅數字，唔影響資料本身。
+  function syncRecordCount(count) {
+    if(!currentUser) return;
+    setDoc(doc(db,`users/${currentUser.uid}/meta`,'counts'),{counts:{[catId]:count}},{merge:true})
+      .catch(e=>console.warn('Record count sync failed',e));
+  }
+
   async function fetchRecords(force=false) {
     if(!force&&cachedRecords) return cachedRecords;
     const snap=await getDocs(query(col(),orderBy('date','asc')));
     cachedRecords=[]; snap.forEach(d=>cachedRecords.push({_id:d.id,...d.data()}));
+    syncRecordCount(cachedRecords.length);
     return cachedRecords;
   }
 
@@ -438,6 +462,7 @@
     dash.innerHTML='';
     if(!records.length){
       dash.innerHTML=`<div class="empty"><div class="empty-icon">🌸</div><div class="empty-text">No records yet.<br>Add your first price above!</div></div>`;
+      updateToggleAllLabel();
       return;
     }
 
@@ -492,7 +517,7 @@
             ${trendBadge(recsAsc)}
           </div>
         </div>
-        <button class="expand-toggle ${isOpen?'open':''}" data-id="${domId}">
+        <button class="expand-toggle ${isOpen?'open':''}" data-id="${domId}" data-count="${recs.length}">
           <span class="chevron">▾</span> ${isOpen?'Hide':'Show'} price history &amp; chart (${recs.length})
         </button>
         <div class="details ${isOpen?'open':''}" id="details-${domId}">
@@ -509,19 +534,25 @@
       dash.appendChild(card);
       card.querySelectorAll('.entry-del').forEach(btn=>btn.addEventListener('click',()=>deleteEntry(btn.dataset.id)));
 
-      const toggleBtn=card.querySelector('.expand-toggle');
-      toggleBtn.addEventListener('click',()=>toggleDetails(domId,toggleBtn,recs.length));
+      card.querySelector('.expand-toggle').addEventListener('click',()=>toggleDetails(domId));
 
       // 如果之前展開過 (expandedKeys 有記住)，refresh() 之後要即刻重建 chart
       if(isOpen) buildCharts(domId);
       idx++;
     }
+    updateToggleAllLabel();
   }
 
   // 展開/收合單一 item 既價格記錄 + 圖表 (圖表 lazy 建，收合時 destroy 慳記憶體)
-  function toggleDetails(domId, toggleBtn, count) {
+  // forceOpen 唔傳就係普通 click toggle；傳 true/false 係畀 "Expand all / Collapse all" 統一操控用
+  function toggleDetails(domId, forceOpen) {
     const details=document.getElementById(`details-${domId}`);
-    const willOpen=!details.classList.contains('open');
+    const toggleBtn=document.querySelector(`.expand-toggle[data-id="${domId}"]`);
+    if(!details||!toggleBtn) return;
+    const isOpen=details.classList.contains('open');
+    const willOpen=forceOpen===undefined?!isOpen:forceOpen;
+    if(willOpen===isOpen) return;
+    const count=toggleBtn.dataset.count;
     if(willOpen){
       expandedKeys.add(domId);
       details.classList.add('open');
@@ -536,7 +567,24 @@
       // 收合時 destroy chart instance，避免太多展開過既 item 一直佔住記憶體
       ['line','bar'].forEach(p=>{ if(charts[`${p}-${domId}`]){ charts[`${p}-${domId}`].destroy(); delete charts[`${p}-${domId}`]; } });
     }
+    updateToggleAllLabel();
   }
+
+  // 更新右上角 "Expand all / Collapse all" 按鈕嘅文字同顯示/隱藏狀態
+  function updateToggleAllLabel() {
+    const btn=document.getElementById('toggleAllBtn');
+    const toggles=[...document.querySelectorAll('.expand-toggle')];
+    if(!toggles.length){ btn.style.display='none'; return; }
+    btn.style.display='inline-block';
+    const allOpen=toggles.every(t=>t.classList.contains('open'));
+    btn.textContent=allOpen?'Collapse all ▴':'Expand all ▾';
+  }
+
+  document.getElementById('toggleAllBtn').addEventListener('click',()=>{
+    const toggles=[...document.querySelectorAll('.expand-toggle')];
+    const allOpen=toggles.length>0&&toggles.every(t=>t.classList.contains('open'));
+    toggles.forEach(t=>toggleDetails(t.dataset.id,!allOpen));
+  });
 
   function buildCharts(domId) {
     const data=chartDataCache[domId];
@@ -614,14 +662,21 @@
     if(!product||!store||!price||price<=0){showToast('Please fill all fields correctly 🙏','error');return;}
     addBtn.disabled=true; addBtn.textContent='Saving… 🌸';
     try {
-      await addDoc(col(),{product:product.toLowerCase(),store:store.toLowerCase(),price,currency,
+      const productKey=product.toLowerCase();
+      // 加之前先攞返呢個商品現有嘅最低價，等一陣攞嚟同新價錢比較，判斷係咪破歷史新低
+      const priorRecords=(cachedRecords||[]).filter(r=>r.product===productKey);
+      const priorLowest=priorRecords.length?Math.min(...priorRecords.map(r=>r.price)):null;
+      const isNewLow=priorRecords.length>0&&priorLowest!==null&&price<priorLowest;
+
+      await addDoc(col(),{product:productKey,store:store.toLowerCase(),price,currency,
         date:new Date().toISOString(),productOriginal:product,storeOriginal:store});
       document.getElementById('product').value='';
       document.getElementById('price').value='';
       document.getElementById('store').value='';
       document.getElementById('priceHint').className='price-hint';
       cachedRecords=null; await refresh();
-      showToast('Record added ✓','success');
+      if(isNewLow) showToast(`🎉 New record low for "${product}"!`,'success');
+      else showToast('Record added ✓','success');
     } catch(e){console.error(e);showToast('Save failed. Please try again.','error');}
     finally{addBtn.disabled=false;addBtn.textContent='Add Record ✓';}
   });
@@ -680,7 +735,10 @@
   document.getElementById('importCSV').addEventListener('change',async e=>{
     const file=e.target.files[0]; if(!file) return;
     try{
-      const lines=(await file.text()).split(/\r?\n/).slice(1); let count=0;
+      // 用 product|store|price|date 做 signature 去重：同現有記錄比較，亦都比較緊自己呢份 CSV 入面嘅行
+      const existing=await fetchRecords();
+      const seen=new Set(existing.map(r=>`${r.product}|${r.store}|${r.price}|${r.date}`));
+      const lines=(await file.text()).split(/\r?\n/).slice(1); let count=0, skipped=0;
       for(const line of lines){
         if(!line.trim()) continue;
         const parts=parseCSVLine(line); if(parts.length<4) continue;
@@ -691,12 +749,18 @@
         const date=hasCurrencyCol?parts[4]:parts[3];
         const p=parseFloat(price);
         if(!product?.trim()||!store?.trim()||isNaN(p)||p<=0) continue;
-        await addDoc(col(),{product:product.trim().toLowerCase(),store:store.trim().toLowerCase(),price:p,
+        const prodNorm=product.trim().toLowerCase(), storeNorm=store.trim().toLowerCase();
+        const dateNorm=date?.trim()||new Date().toISOString();
+        const sig=`${prodNorm}|${storeNorm}|${p}|${dateNorm}`;
+        if(seen.has(sig)){ skipped++; continue; }
+        seen.add(sig);
+        await addDoc(col(),{product:prodNorm,store:storeNorm,price:p,
           currency:rowCurrency?.trim()||currency,
-          date:date?.trim()||new Date().toISOString(),productOriginal:product.trim(),storeOriginal:store.trim()});
+          date:dateNorm,productOriginal:product.trim(),storeOriginal:store.trim()});
         count++;
       }
-      cachedRecords=null; await refresh(); showToast(`Imported ${count} record(s) ✓`,'success');
+      cachedRecords=null; await refresh();
+      showToast(`Imported ${count} record(s)${skipped?`, skipped ${skipped} duplicate(s) 🧹`:''} ✓`,'success');
     }catch(err){console.error(err);showToast('Import failed. Check CSV format.','error');}
     e.target.value='';
   });

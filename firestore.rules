@@ -5,12 +5,13 @@ service cloud.firestore {
     // 實際程式碼會寫入/讀取：
     //   users/{uid}/categories/{catId}          （自訂分類）
     //   users/{uid}/records_{catId}/{docId}      （每個分類自己一個 collection，動態命名）
-    // 呢兩種 collection 都收埋喺 users/{uid} 底下同一條 rule，
+    //   users/{uid}/meta/counts                  （每個分類 record 數量嘅 denormalized cache，畀 index.html 一次過讀晒，唔使逐個分類 query）
+    // 呢幾種 collection 都收埋喺 users/{uid} 底下同一條 rule，
     // 用 collectionId 判斷屬於邊種，並且一定要 request.auth.uid == uid 先俾讀寫（防止 A 用戶睇/改到 B 用戶啲資料）。
     match /users/{uid}/{collectionId}/{docId} {
       allow read, write: if request.auth != null
         && request.auth.uid == uid
-        && (collectionId == 'categories' || collectionId.matches('records_.*'));
+        && (collectionId == 'categories' || collectionId == 'meta' || collectionId.matches('records_.*'));
     }
 
     // 其他所有 collection（包括舊版 top-level /records/{docId}，而家程式碼已經冇再用）一律拒絕，收窄 attack surface

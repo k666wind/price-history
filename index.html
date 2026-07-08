@@ -514,7 +514,7 @@
     sendPasswordResetEmail, signOut, onAuthStateChanged
   } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
   import {
-    collection, doc, getDocs, setDoc, deleteDoc, query, orderBy
+    collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, orderBy
   } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   const DEFAULT_CATS = [
@@ -527,6 +527,18 @@
   ];
 
   const EMOJIS = ['🛒','🍽️','💊','📱','👗','⛽','🎮','📚','🏠','✈️','🎵','🐾','🍺','☕','🌿','💄','🧴','🏋️','🚗','🎁','🍕','🛍️'];
+
+  // 自訂分類建立時自動輪流配色，唔會成班自訂分類都係同一個 fallback 橙色
+  const CAT_PALETTE = [
+    { color:'#60a5fa', blob:'#bfdbfe', pill:'#eff6ff', pillText:'#3b82f6' },
+    { color:'#fb923c', blob:'#fed7aa', pill:'#fff7ed', pillText:'#f97316' },
+    { color:'#34d399', blob:'#a7f3d0', pill:'#ecfdf5', pillText:'#10b981' },
+    { color:'#a78bfa', blob:'#ddd6fe', pill:'#f5f3ff', pillText:'#8b5cf6' },
+    { color:'#f472b6', blob:'#fbcfe8', pill:'#fdf2f8', pillText:'#ec4899' },
+    { color:'#fbbf24', blob:'#fde68a', pill:'#fffbeb', pillText:'#f59e0b' },
+    { color:'#5bc4bf', blob:'#99f6e4', pill:'#f0fdfa', pillText:'#0d9488' },
+    { color:'#f87171', blob:'#fecaca', pill:'#fef2f2', pillText:'#ef4444' },
+  ];
 
   let currentUser = null, selectedEmoji = '🏷️', customCats = [], recordCounts = {};
   let currentCurrency = localStorage.getItem('ph_currency') || '£';
@@ -616,11 +628,14 @@
   }
 
   async function loadRecordCounts() {
-    recordCounts={};
-    await Promise.all([...DEFAULT_CATS,...customCats].map(async cat=>{
-      const snap=await getDocs(collection(db,`users/${currentUser.uid}/records_${cat.id}`));
-      recordCounts[cat.id]=snap.size;
-    }));
+    // 讀 tracker.html 每次 refresh() 都會同步寫入嘅 denormalized count cache，一次 getDoc 就搞掂，
+    // 唔使好似之前咁逐個分類各自發一次 getDocs（分類多會好慢）。
+    // 注意：如果某個分類喺呢個功能上線之前就已經有記錄，但用戶未開過個 tracker 頁，
+    // count 會顯示 0 / "New"，一旦打開過該分類一次就會自動補返正確數字（self-healing）。
+    try {
+      const snap=await getDoc(doc(db,`users/${currentUser.uid}/meta`,'counts'));
+      recordCounts = snap.exists() ? (snap.data().counts||{}) : {};
+    } catch(e) { console.warn('Failed to load record counts', e); recordCounts={}; }
   }
 
   function renderGrid() {
@@ -673,7 +688,8 @@
   document.getElementById('addCatBtn').addEventListener('click',async()=>{
     const nameEl=document.getElementById('newCatName'); const name=nameEl.value.trim(); if(!name) return;
     const id=name.toLowerCase().replace(/\s+/g,'_')+'_'+Date.now();
-    const catData={name,emoji:selectedEmoji,createdAt:Date.now()};
+    const palette=CAT_PALETTE[customCats.length % CAT_PALETTE.length];
+    const catData={name,emoji:selectedEmoji,createdAt:Date.now(),...palette};
     await setDoc(doc(userCatsCol(),id),catData);
     customCats.push({id,...catData});
     nameEl.value=''; selectedEmoji='🏷️'; document.getElementById('emojiBtn').textContent='🏷️';
