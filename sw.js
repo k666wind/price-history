@@ -1,11 +1,12 @@
-const CACHE_NAME = 'shopping-pwa-v2';
-const BASE_PATH = '/shopping-pwa/';
+const CACHE_NAME = 'price-history-v3';
+const BASE_PATH = '/price-history/';
 
 const urlsToCache = [
   `${BASE_PATH}`,
   `${BASE_PATH}index.html`,
+  `${BASE_PATH}tracker.html`,
+  `${BASE_PATH}tracker-dark.html`,
   `${BASE_PATH}style.css`,
-  `${BASE_PATH}app.js`,
   `${BASE_PATH}firebase.js`,
   `${BASE_PATH}manifest.json`,
   `${BASE_PATH}icon.png`,

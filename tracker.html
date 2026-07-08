@@ -77,6 +77,16 @@
     }
     .back-btn:hover { border-color:var(--cat-color); transform:scale(1.05); }
 
+    .theme-toggle {
+      width:40px; height:40px; border-radius:14px; flex-shrink:0;
+      background:var(--surface); border:2px solid var(--border2);
+      display:flex; align-items:center; justify-content:center;
+      font-size:1.1rem; text-decoration:none; cursor:pointer;
+      box-shadow:0 2px 8px rgba(61,44,30,0.08);
+      transition:border-color 0.15s, transform 0.15s;
+    }
+    .theme-toggle:hover { border-color:var(--cat-color); transform:scale(1.05); }
+
     .topbar-info { flex:1; }
     .topbar-title {
       display:flex; align-items:center; gap:10px;
@@ -300,6 +310,7 @@
         </div>
         <div class="topbar-currency" id="currencyLabel"></div>
       </div>
+      <a href="#" id="themeToggle" class="theme-toggle" title="Switch to dark theme">🌙</a>
     </div>
 
     <div class="main">
@@ -370,6 +381,7 @@
   document.title = `${catName} · Price History`;
   document.querySelectorAll('.cur-sym').forEach(el => el.textContent = currency);
   document.documentElement.style.setProperty('--cat-color', catColor);
+  document.getElementById('themeToggle').href = `tracker-dark.html?${params.toString()}`;
 
   function showToast(msg, type='') {
     const t=document.getElementById('toast'); t.textContent=msg; t.className=`toast ${type} show`;
@@ -401,7 +413,7 @@
     const priceVal=parseFloat(document.getElementById('price').value);
     const hint=document.getElementById('priceHint');
     if(!productKey||!cachedRecords||isNaN(priceVal)){hint.className='price-hint';return;}
-    const recs=cachedRecords.filter(r=>r.product===productKey);
+    const recs=cachedRecords.filter(r=>r.product===productKey&&(r.currency||currency)===currency);
     if(!recs.length){hint.className='price-hint';return;}
     const last=[...recs].sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
     const diff=priceVal-last.price, pct=(Math.abs(diff)/last.price*100).toFixed(1);
@@ -420,12 +432,21 @@
       return;
     }
 
+    // 依「商品 + 幣別」分組，避免不同幣別的價格被直接拿來比較漲跌/最低價
+    // (舊資料沒有 currency 欄位，視為屬於目前顯示中的 currency，向下相容)
     const productMap={};
-    records.forEach(r=>{if(!productMap[r.product])productMap[r.product]=[];productMap[r.product].push(r);});
+    records.forEach(r=>{
+      const rCur=r.currency||currency;
+      const key=`${r.product}||${rCur}`;
+      if(!productMap[key])productMap[key]={currency:rCur,recs:[]};
+      productMap[key].recs.push(r);
+    });
 
     let idx=0;
-    for(let prod in productMap){
-      const recs=productMap[prod].sort((a,b)=>new Date(b.date)-new Date(a.date));
+    for(let groupKey in productMap){
+      const groupCurrency=productMap[groupKey].currency;
+      const domId=groupKey.replace(/[^a-zA-Z0-9_-]/g,'_');
+      const recs=productMap[groupKey].recs.sort((a,b)=>new Date(b.date)-new Date(a.date));
       const recsAsc=[...recs].reverse();
       const latest=recs[0];
       const lowest=recs.reduce((m,r)=>r.price<m.price?r:m,recs[0]);
@@ -442,7 +463,7 @@
           <div class="entry-row">
             <div class="entry-bar ${isLowest?'lowest':''}"></div>
             <div class="entry-store">${r.storeOriginal}</div>
-            <div class="entry-price ${isLowest?'lowest-price':''}">${currency}${r.price.toFixed(2)}</div>
+            <div class="entry-price ${isLowest?'lowest-price':''}">${groupCurrency}${r.price.toFixed(2)}</div>
             <div class="entry-date">${r.date.split('T')[0]}</div>
             <button class="entry-del" data-id="${r._id}">✕</button>
           </div>`;
@@ -451,10 +472,10 @@
       card.innerHTML=`
         <div class="prod-strip" style="background:linear-gradient(90deg,${catColor},${catColor}88)"></div>
         <div class="prod-header">
-          <div class="prod-name">${latest.productOriginal}</div>
+          <div class="prod-name">${latest.productOriginal}${groupCurrency!==currency?` <span class="badge" style="opacity:.7">${groupCurrency} entries</span>`:''}</div>
           <div class="prod-badges">
-            <span class="badge badge-latest">Latest ${currency}${latest.price.toFixed(2)} · ${latest.storeOriginal}</span>
-            <span class="badge badge-lowest">🏆 Lowest ${currency}${lowest.price.toFixed(2)} · ${lowest.storeOriginal}</span>
+            <span class="badge badge-latest">Latest ${groupCurrency}${latest.price.toFixed(2)} · ${latest.storeOriginal}</span>
+            <span class="badge badge-lowest">🏆 Lowest ${groupCurrency}${lowest.price.toFixed(2)} · ${lowest.storeOriginal}</span>
             ${trendBadge(recsAsc)}
           </div>
         </div>
@@ -463,22 +484,22 @@
           ${entriesHTML}
         </div>
         <div class="charts">
-          <canvas id="line-${prod}"></canvas>
-          <canvas id="bar-${prod}"></canvas>
+          <canvas id="line-${domId}"></canvas>
+          <canvas id="bar-${domId}"></canvas>
         </div>`;
 
       dash.appendChild(card);
       card.querySelectorAll('.entry-del').forEach(btn=>btn.addEventListener('click',()=>deleteEntry(btn.dataset.id)));
 
       requestAnimationFrame(()=>{
-        const lineEl=document.getElementById(`line-${prod}`);
-        const barEl=document.getElementById(`bar-${prod}`);
+        const lineEl=document.getElementById(`line-${domId}`);
+        const barEl=document.getElementById(`bar-${domId}`);
         if(!lineEl||!barEl||typeof Chart==='undefined') return;
 
         const tick='#a8937e'; const grid='rgba(240,230,216,0.6)';
 
-        if(charts[`line-${prod}`]) charts[`line-${prod}`].destroy();
-        charts[`line-${prod}`]=new Chart(lineEl.getContext('2d'),{
+        if(charts[`line-${domId}`]) charts[`line-${domId}`].destroy();
+        charts[`line-${domId}`]=new Chart(lineEl.getContext('2d'),{
           type:'line',
           data:{
             labels:recsAsc.map(r=>r.date.split('T')[0]),
@@ -492,13 +513,13 @@
             plugins:{legend:{display:false}},
             scales:{
               x:{ticks:{color:tick,font:{size:10,family:'Quicksand',weight:'600'}},grid:{color:grid}},
-              y:{ticks:{color:tick,font:{size:10,family:'Quicksand',weight:'600'},callback:v=>`${currency}${v}`},grid:{color:grid}}
+              y:{ticks:{color:tick,font:{size:10,family:'Quicksand',weight:'600'},callback:v=>`${groupCurrency}${v}`},grid:{color:grid}}
             }
           }
         });
 
-        if(charts[`bar-${prod}`]) charts[`bar-${prod}`].destroy();
-        charts[`bar-${prod}`]=new Chart(barEl.getContext('2d'),{
+        if(charts[`bar-${domId}`]) charts[`bar-${domId}`].destroy();
+        charts[`bar-${domId}`]=new Chart(barEl.getContext('2d'),{
           type:'bar',
           data:{
             labels:Object.keys(storeStats),
@@ -510,7 +531,7 @@
             plugins:{legend:{display:false}},
             scales:{
               x:{ticks:{color:tick,font:{size:10,family:'Quicksand',weight:'600'}},grid:{display:false}},
-              y:{ticks:{color:tick,font:{size:10,family:'Quicksand',weight:'600'},callback:v=>`${currency}${v}`},grid:{color:grid}}
+              y:{ticks:{color:tick,font:{size:10,family:'Quicksand',weight:'600'},callback:v=>`${groupCurrency}${v}`},grid:{color:grid}}
             }
           }
         });
@@ -542,7 +563,7 @@
     if(!product||!store||!price||price<=0){showToast('Please fill all fields correctly 🙏','error');return;}
     addBtn.disabled=true; addBtn.textContent='Saving… 🌸';
     try {
-      await addDoc(col(),{product:product.toLowerCase(),store:store.toLowerCase(),price,
+      await addDoc(col(),{product:product.toLowerCase(),store:store.toLowerCase(),price,currency,
         date:new Date().toISOString(),productOriginal:product,storeOriginal:store});
       document.getElementById('product').value='';
       document.getElementById('price').value='';
@@ -566,11 +587,37 @@
   document.getElementById('search').addEventListener('input',()=>{clearTimeout(debTimer);debTimer=setTimeout(refresh,300);});
   document.getElementById('filterStore').addEventListener('change',refresh);
 
+  // 簡易 CSV 欄位跳脫：內容含逗號/雙引號/換行時用雙引號包起來
+  function csvEscape(v) {
+    const s=String(v??'');
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
+  }
+  // 簡易 CSV 一行解析：支援雙引號包住、內含逗號的欄位
+  function parseCSVLine(line) {
+    const out=[]; let cur=''; let inQ=false;
+    for(let i=0;i<line.length;i++){
+      const c=line[i];
+      if(inQ){
+        if(c==='"'){ if(line[i+1]==='"'){cur+='"';i++;} else inQ=false; }
+        else cur+=c;
+      } else {
+        if(c==='"') inQ=true;
+        else if(c===',') { out.push(cur); cur=''; }
+        else cur+=c;
+      }
+    }
+    out.push(cur);
+    return out;
+  }
+
   document.getElementById('exportBtn').addEventListener('click',async()=>{
     const records=await fetchRecords();
     if(!records.length){showToast('No data to export 🙈','warn');return;}
-    let csv='product,store,price,date\n';
-    records.forEach(r=>csv+=`${r.productOriginal},${r.storeOriginal},${r.price},${r.date}\n`);
+    let csv='product,store,price,currency,date\n';
+    records.forEach(r=>{
+      const cols=[r.productOriginal,r.storeOriginal,r.price,r.currency||currency,r.date].map(csvEscape);
+      csv+=cols.join(',')+'\n';
+    });
     const a=Object.assign(document.createElement('a'),{
       href:URL.createObjectURL(new Blob([csv],{type:'text/csv'})),
       download:`${catId}-prices.csv`
@@ -582,13 +629,19 @@
   document.getElementById('importCSV').addEventListener('change',async e=>{
     const file=e.target.files[0]; if(!file) return;
     try{
-      const lines=(await file.text()).split('\n').slice(1); let count=0;
+      const lines=(await file.text()).split(/\r?\n/).slice(1); let count=0;
       for(const line of lines){
         if(!line.trim()) continue;
-        const parts=line.split(','); if(parts.length<3) continue;
-        const [product,store,price,date]=parts; const p=parseFloat(price);
+        const parts=parseCSVLine(line); if(parts.length<4) continue;
+        // 支援舊格式 (product,store,price,date) 與新格式 (product,store,price,currency,date)
+        const hasCurrencyCol=parts.length>=5;
+        const product=parts[0], store=parts[1], price=parts[2];
+        const rowCurrency=hasCurrencyCol?parts[3]:currency;
+        const date=hasCurrencyCol?parts[4]:parts[3];
+        const p=parseFloat(price);
         if(!product?.trim()||!store?.trim()||isNaN(p)||p<=0) continue;
         await addDoc(col(),{product:product.trim().toLowerCase(),store:store.trim().toLowerCase(),price:p,
+          currency:rowCurrency?.trim()||currency,
           date:date?.trim()||new Date().toISOString(),productOriginal:product.trim(),storeOriginal:store.trim()});
         count++;
       }
@@ -603,7 +656,7 @@
     else{window.location.href='index.html';}
   });
 
-  if('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('/shopping-pwa/sw.js'));
+  if('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('/price-history/sw.js'));
 </script>
 </body>
 </html>
