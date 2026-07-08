@@ -2,12 +2,18 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // records collection: 必須登入（包括 Anonymous Auth）先可以讀寫
-    match /records/{docId} {
-      allow read, write: if request.auth != null;
+    // 實際程式碼會寫入/讀取：
+    //   users/{uid}/categories/{catId}          （自訂分類）
+    //   users/{uid}/records_{catId}/{docId}      （每個分類自己一個 collection，動態命名）
+    // 呢兩種 collection 都收埋喺 users/{uid} 底下同一條 rule，
+    // 用 collectionId 判斷屬於邊種，並且一定要 request.auth.uid == uid 先俾讀寫（防止 A 用戶睇/改到 B 用戶啲資料）。
+    match /users/{uid}/{collectionId}/{docId} {
+      allow read, write: if request.auth != null
+        && request.auth.uid == uid
+        && (collectionId == 'categories' || collectionId.matches('records_.*'));
     }
 
-    // 其他所有 collection 一律拒絕，收窄 attack surface
+    // 其他所有 collection（包括舊版 top-level /records/{docId}，而家程式碼已經冇再用）一律拒絕，收窄 attack surface
     match /{document=**} {
       allow read, write: if false;
     }
@@ -17,5 +23,5 @@ service cloud.firestore {
 // 部署方法：
 // firebase deploy --only firestore:rules
 //
-// 部署之前記得喺 Firebase Console 開啟 Authentication > Sign-in method > Anonymous
-// 否則 signInAnonymously() 會失敗，導致 app 完全用唔到（fail closed，安全但要記得開）
+// 部署之前記得喺 Firebase Console 開啟 Authentication 你揀用緊嘅登入方式（Email/Password 等）
+// 否則所有讀寫都會因為 request.auth == null 而被拒絕

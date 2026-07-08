@@ -6,8 +6,8 @@
   "scope": "/price-history/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#ffffff",
-  "theme_color": "#3880ff",
+  "background_color": "#fdf6ee",
+  "theme_color": "#fdf6ee",
   "icons": [
     {
       "src": "icon.png",

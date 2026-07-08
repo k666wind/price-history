@@ -1,12 +1,10 @@
-const CACHE_NAME = 'price-history-v3';
+const CACHE_NAME = 'price-history-v5';
 const BASE_PATH = '/price-history/';
 
 const urlsToCache = [
   `${BASE_PATH}`,
   `${BASE_PATH}index.html`,
   `${BASE_PATH}tracker.html`,
-  `${BASE_PATH}tracker-dark.html`,
-  `${BASE_PATH}style.css`,
   `${BASE_PATH}firebase.js`,
   `${BASE_PATH}manifest.json`,
   `${BASE_PATH}icon.png`,

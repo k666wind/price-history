@@ -7,4 +7,5 @@ Track product prices across stores & categories
 📈 Price trend analysis & lowest price highlights
 📥 CSV import / export
 📱 PWA — installable, offline-ready
-🌸 Soft Pastel UI with dark glassmorphism option
+🌸 Soft Pastel UI
+📊 Collapsible per-item price history & chart (click to expand)
