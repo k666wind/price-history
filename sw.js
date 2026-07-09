@@ -1,4 +1,4 @@
-const CACHE_NAME = 'price-history-v5';
+const CACHE_NAME = 'price-history-v6';
 const BASE_PATH = '/price-history/';
 
 const urlsToCache = [

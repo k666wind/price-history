@@ -132,6 +132,7 @@
     .price-hint.cheaper { border-color:#6ee7b7; color:#059669; background:#f0fdf4; }
     .price-hint.dearer  { border-color:#fca5a5; color:#dc2626; background:#fff1f2; }
     .price-hint.same    { border-color:#c7d2fe; color:#4f46e5; background:#eef2ff; }
+    .price-hint.record-low { border-color:#fcd34d; color:#b45309; background:#fffbeb; font-weight:800; }
 
     .btn-add {
       width:100%; height:52px; border-radius:16px;
@@ -445,6 +446,17 @@
     const recs=cachedRecords.filter(r=>r.product===productKey&&(r.currency||currency)===currency);
     if(!recs.length){hint.className='price-hint';return;}
     const last=[...recs].sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
+    const lowestPrice=Math.min(...recs.map(r=>r.price));
+
+    // 破歷史新低優先顯示，比單純「同上次比較」更值得留意 —
+    // 用戶打緊價錢嗰陣就即時知道會唔會破紀錄，唔使等 submit 咗先喺卡片度睇返
+    if(priceVal<lowestPrice){
+      const pct=(Math.abs((priceVal-lowestPrice)/lowestPrice)*100).toFixed(1);
+      hint.className='price-hint visible record-low';
+      hint.textContent=`🎉🏆 New record low! ${pct}% below previous best (${currency}${lowestPrice.toFixed(2)})`;
+      return;
+    }
+
     const diff=priceVal-last.price, pct=(Math.abs(diff)/last.price*100).toFixed(1);
     if(diff<0){hint.className='price-hint visible cheaper';hint.textContent=`🎉 ${pct}% cheaper than last time (${currency}${last.price.toFixed(2)})`;}
     else if(diff>0){hint.className='price-hint visible dearer';hint.textContent=`⚠️ ${pct}% more expensive than last time (${currency}${last.price.toFixed(2)})`;}

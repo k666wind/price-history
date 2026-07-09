@@ -298,12 +298,24 @@
     .cat-count { font-size: 0.72rem; color: var(--muted); font-weight: 600; }
 
     /* ── Add category box ── */
-    .add-box {
+    .add-box, .lookup-box {
       background: var(--surface); border: 2px solid var(--border);
       border-radius: 24px; padding: 22px 20px;
       box-shadow: 0 4px 16px rgba(61,44,30,0.06);
       animation: fadeSlideUp 0.5s ease 0.5s both;
+      margin-bottom: 18px;
     }
+
+    .lookup-result-row {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--bg); border: 2px solid var(--border);
+      border-radius: 14px; padding: 10px 14px; margin-top: 8px;
+    }
+    .lookup-result-row.best { border-color: #6ee7b7; background: #f0fdf4; }
+    .lr-cat { font-size: 1.2rem; }
+    .lr-main { flex: 1; font-size: 0.88rem; font-weight: 700; }
+    .lr-price { font-size: 0.95rem; font-weight: 800; color: var(--accent); }
+    .lookup-empty { color: var(--muted); font-size: 0.85rem; margin-top: 10px; text-align: center; }
 
     .add-box-title {
       font-family: 'Nunito', sans-serif; font-size: 0.8rem; font-weight: 800;
@@ -372,6 +384,15 @@
       opacity: 0.4; transition: opacity 0.15s, background 0.15s;
     }
     .ci-del:hover { opacity: 1; background: rgba(248,113,113,0.1); }
+
+    .recolor-btn {
+      margin-top: 10px; width: 100%; padding: 10px 14px; border-radius: 14px;
+      background: var(--bg); border: 2px dashed var(--border2);
+      font-family: 'Nunito', sans-serif; font-size: 0.82rem; font-weight: 800;
+      color: var(--muted); cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .recolor-btn:hover { border-color: var(--accent); color: var(--accent); }
 
     .spinner {
       display: flex; align-items: center; justify-content: center;
@@ -493,6 +514,15 @@
       <div class="cat-grid" id="catGrid">
         <div class="spinner"><div class="spin"></div> Loading…</div>
       </div>
+      <div class="lookup-box">
+        <div class="add-box-title">🔎 Find Cheapest Across Categories</div>
+        <div class="add-row">
+          <input class="text-input" id="lookupInput" placeholder="e.g. whole milk" style="flex:1">
+          <button class="btn-plus" id="lookupBtn">🔎</button>
+        </div>
+        <div id="lookupResults"></div>
+      </div>
+
       <div class="add-box">
         <div class="add-box-title">＋ Add Custom Category</div>
         <div class="add-row">
@@ -502,6 +532,7 @@
           <div class="emoji-popup" id="emojiPopup"></div>
         </div>
         <div class="custom-list" id="customList"></div>
+        <button class="recolor-btn" id="recolorBtn" style="display:none">🎨 Recolor legacy categories</button>
       </div>
     </div>
   </div>
@@ -514,7 +545,7 @@
     sendPasswordResetEmail, signOut, onAuthStateChanged
   } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
   import {
-    collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, orderBy
+    collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, orderBy, where
   } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   const DEFAULT_CATS = [
@@ -630,12 +661,33 @@
   async function loadRecordCounts() {
     // 讀 tracker.html 每次 refresh() 都會同步寫入嘅 denormalized count cache，一次 getDoc 就搞掂，
     // 唔使好似之前咁逐個分類各自發一次 getDocs（分類多會好慢）。
-    // 注意：如果某個分類喺呢個功能上線之前就已經有記錄，但用戶未開過個 tracker 頁，
-    // count 會顯示 0 / "New"，一旦打開過該分類一次就會自動補返正確數字（self-healing）。
     try {
       const snap=await getDoc(doc(db,`users/${currentUser.uid}/meta`,'counts'));
       recordCounts = snap.exists() ? (snap.data().counts||{}) : {};
     } catch(e) { console.warn('Failed to load record counts', e); recordCounts={}; }
+    await backfillMissingCounts();
+  }
+
+  // 一次性 backfill：對 meta/counts 度未出現過嘅分類（即係呢個 feature 上線之前就有記錄、
+  // 但用戶未開過個 tracker 頁嘅分類），逐個做返舊式 getDocs 查詢，攞到真實數量之後寫番去
+  // meta/counts，令個 count cache 一次過補晒返嚟。之後淨係呢啲「未同步過」嘅分類先會觸發
+  // 呢條 query，唔會變返成日 N+1（一旦補咗一次，之後就一直讀 cache，唔會再入呢個 function 做嘢）。
+  async function backfillMissingCounts() {
+    const allCats=[...DEFAULT_CATS,...customCats];
+    const missing=allCats.filter(cat=>!(cat.id in recordCounts));
+    if(!missing.length) return;
+    const updates={};
+    await Promise.all(missing.map(async cat=>{
+      try {
+        const snap=await getDocs(collection(db,`users/${currentUser.uid}/records_${cat.id}`));
+        recordCounts[cat.id]=snap.size;
+        updates[cat.id]=snap.size;
+      } catch(e) { console.warn(`Backfill count failed for ${cat.id}`, e); }
+    }));
+    if(Object.keys(updates).length){
+      try { await setDoc(doc(db,`users/${currentUser.uid}/meta`,'counts'),{counts:updates},{merge:true}); }
+      catch(e) { console.warn('Backfill count sync failed', e); }
+    }
   }
 
   function renderGrid() {
@@ -683,7 +735,62 @@
       });
       list.appendChild(item);
     });
+    const recolorBtn=document.getElementById('recolorBtn');
+    recolorBtn.style.display = customCats.some(c=>!c.color) ? 'block' : 'none';
   }
+
+  // 幫舊有（呢個 feature 上線之前建立）冇 color/blob/pill 嘅自訂分類，一次過補返配色
+  document.getElementById('recolorBtn').addEventListener('click', async ()=>{
+    const toFix=customCats.filter(c=>!c.color);
+    if(!toFix.length){ showToast('All categories already have colors ✨'); return; }
+    await Promise.all(toFix.map(cat=>{
+      const palette=CAT_PALETTE[customCats.indexOf(cat) % CAT_PALETTE.length];
+      Object.assign(cat,palette);
+      return setDoc(doc(userCatsCol(),cat.id),palette,{merge:true});
+    }));
+    renderGrid(); renderCustomList();
+    showToast(`Recolored ${toFix.length} categor${toFix.length!==1?'ies':'y'} 🎨`,'success');
+  });
+
+  // 跨分類搜尋：搵返一個商品喺所有分類入面（唔止當前一個分類）出現過嘅最平紀錄。
+  // 因為冇 server-side full-text index，逐個分類收集 collection 各發一次 exact-match where 查詢（只喺用戶主動搜尋時先觸發，唔會拖慢首頁載入）。
+  async function lookupAcrossCategories() {
+    const input=document.getElementById('lookupInput');
+    const resultsEl=document.getElementById('lookupResults');
+    const term=input.value.trim().toLowerCase();
+    if(!term){ resultsEl.innerHTML=''; return; }
+    resultsEl.innerHTML=`<div class="lookup-empty">Searching…</div>`;
+
+    const allCats=[...DEFAULT_CATS,...customCats];
+    const matches=[];
+    await Promise.all(allCats.map(async cat=>{
+      try {
+        const snap=await getDocs(query(collection(db,`users/${currentUser.uid}/records_${cat.id}`), where('product','==',term)));
+        snap.forEach(d=>{
+          const r=d.data();
+          matches.push({...r, catName:cat.name, catEmoji:cat.emoji});
+        });
+      } catch(e) { console.warn(`Lookup failed for ${cat.id}`, e); }
+    }));
+
+    if(!matches.length){
+      resultsEl.innerHTML=`<div class="lookup-empty">No records found for "${input.value.trim()}" in any category.</div>`;
+      return;
+    }
+    matches.sort((a,b)=>a.price-b.price);
+    const lowestPrice=matches[0].price;
+    resultsEl.innerHTML = matches.slice(0,10).map(m=>{
+      const isBest = m.price===lowestPrice;
+      const sym = m.currency || currentCurrency;
+      return `<div class="lookup-result-row ${isBest?'best':''}">
+        <span class="lr-cat">${m.catEmoji}</span>
+        <span class="lr-main">${isBest?'🏆 ':''}${m.storeOriginal} · ${m.catName} · ${(m.date||'').split('T')[0]}</span>
+        <span class="lr-price">${sym}${Number(m.price).toFixed(2)}</span>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('lookupBtn').addEventListener('click', lookupAcrossCategories);
+  document.getElementById('lookupInput').addEventListener('keydown', e=>{ if(e.key==='Enter') lookupAcrossCategories(); });
 
   document.getElementById('addCatBtn').addEventListener('click',async()=>{
     const nameEl=document.getElementById('newCatName'); const name=nameEl.value.trim(); if(!name) return;

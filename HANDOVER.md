@@ -26,6 +26,18 @@ users/{uid}/records_{catId}/{docId}     # 每個分類底下的價格記錄
 
 ---
 
+## Session 5 已完成的修改（清哂上次 review 提出嘅 optional fix + feature idea）
+
+1. **`meta/counts` backfill**：`index.html` 嘅 `loadRecordCounts()` 讀完 cache 之後，會自動對「未喺 `meta/counts` 出現過」嘅分類（即係呢個 feature 上線之前已經有記錄、但用戶未開過嗰個分類 tracker 頁）逐個做返一次舊式 `getDocs` 查真實數量，寫返去 cache（`backfillMissingCounts()`）。之後嗰個分類就會一直命中 cache，唔會變返 N+1。冇寫獨立 admin/Cloud Function script，因為呢個 repo 冇 server-side infra，用「client-side lazy backfill」代替。
+2. **舊自訂分類一鍵重新配色**：`index.html` 加咗 `🎨 Recolor legacy categories` 按鈕（`renderCustomList()` 會判斷有冇 `color` 欄位缺失嘅自訂分類先顯示呢個按鈕），click 會幫全部冇 `color/blob/pill/pillText` 嘅自訂分類，用返同新建分類一樣嘅 `CAT_PALETTE` 輪流配色，並 `setDoc(...,{merge:true})` 寫返去 Firestore。
+3. **Price hint 整合歷史最低價（即時破新低提示）**：`tracker.html` 嘅 `updatePriceHint()`（本身已經係 input 打緊字就即時觸發，唔使等 submit）而家會優先檢查打緊嘅價錢係咪低過呢個商品嘅歷史最低價，係嘅話顯示金色 `🎉🏆 New record low!` 提示（比單純「同上次比較」更值得留意）；如果唔係新低先跌返去原本「同上次比較」嘅邏輯。呢個同時解決埋 review 度提出嘅「price hint 同 trend badge 冧唔埋歷史最低價」呢個 logic concern。
+4. **跨分類搜尋最平價**：`index.html` 首頁加咗 `🔎 Find Cheapest Across Categories` 卡片，輸入商品名（跟返 code 入面既 normalize 規則：trim + lowercase）之後，會逐個分類（`DEFAULT_CATS` + `customCats`）發一次 `where('product','==',term)` 查詢，收集全部命中記錄，按價錢由平到貴排序，最平嗰筆用綠色高亮 + 🏆，最多顯示 10 筆。呢個只喺用戶主動搜尋先觸發查詢，唔會拖慢首頁載入速度。
+5. **`sw.js` cache 版本**：跟住呢輪改動升到 `price-history-v6`。
+
+以上全部改動都用 `node --check`（script）+ `html.parser`（HTML）+ `json.load`（manifest.json）+ 括號配對（firestore.rules）驗證過語法。
+
+---
+
 ## Session 4 已完成的修改（5 個新功能）
 
 1. **Count denormalization（解決 N+1 查詢）**：新增 `users/{uid}/meta/counts` 文件，格式 `{counts:{catId:number}}`。`tracker.html` 每次 `fetchRecords()` 真正向 server 攞新資料後，都會 `setDoc(...,{merge:true})` 寫返實際長度（唔用 `increment()`，直接寫返真實數字，等有偏差都自動修正）。`index.html` 嘅 `loadRecordCounts()` 而家淨係一個 `getDoc`，唔再逐個分類 `getDocs`。
@@ -101,7 +113,7 @@ match /users/{uid}/records_{catId}/{docId} {
 - ~~`style.css` 係死檔案~~：**已在 Session 3 刪除**。
 - ~~`manifest.json` 嘅 `theme_color` 同實際 UI 唔一致~~：**已在 Session 3 修正**（連 `background_color` 都一齊改咗）。
 - ~~Firestore 規則同實際路徑不符~~：**已在 Session 3 修正**，但**尚未部署**，記得手動 `firebase deploy --only firestore:rules`。
-- **價格提示只跟上一筆比**：`updatePriceHint()` / `trendBadge()` 只比較最近一兩筆，沒有跟歷史最低價比較，可能誤導使用者。（Session 4 的「歷史最低價慶祝提示」只在**新增記錄嗰一刻**判斷一次，冇改到呢兩個顯示用嘅函式本身。）
+- ~~價格提示只跟上一筆比~~：**已在 Session 5 解決** —— `updatePriceHint()` 而家會優先檢查歷史最低價。`trendBadge()` 保持原本「同上一筆比較嘅趨勢箭嘴」用途唔變，歷史最低價已經有獨立嘅 🏆 Lowest badge 顯示，唔需要重疊。
 - ~~分類顏色資訊不完整~~：**已在 Session 4 部分解決** —— 新建立嘅自訂分類會自動配 `color/blob/pill/pillText`（8 色 palette 輪流），但**舊有自訂分類冇補色**，仍然 fallback 橙色。
 
 ---
